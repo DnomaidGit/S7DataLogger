@@ -33,7 +33,7 @@ Example project to record data. The storage memory in the PLC is configurable, u
 ## Tutorial
 Watch the video on youtube.
 
-[![Watch the video](https://img.youtube.com/vi/dFuf3VNdXz/0.jpg)](https://www.youtube.com/watch?v=dFuf3VNdXz)
+[![Watch the video](https://img.youtube.com/vi/dFuf3VNdXzA/0.jpg)](https://www.youtube.com/watch?v=dFuf3VNdXzA)
 ***
 
 
