@@ -20,7 +20,7 @@ Example project to record data. The storage memory in the PLC is configurable, u
 * TP 1900 Comfort
 ***
 ## Architecture
-![Architecture](Images/Sche_G.gif)
+![Architecture](Images/Sche_G1.gif)
 ***
 ## Package
 
