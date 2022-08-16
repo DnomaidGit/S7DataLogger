@@ -1,0 +1,11 @@
+﻿TYPE "UDT_LOG"
+AUTHOR : QLR
+FAMILY : DATABASE
+VERSION : 0.1
+   STRUCT
+      DatabaseTable : "UDT_DATABASE_TABLE";   // ::DatabaseTable
+      Request : Int;   // 0:Default; 1:Insert; 2:Delete; 3:DataAvailable; 4:DataNotAvailable; 5:DataInputNOK;6:DataBaseFull
+   END_STRUCT;
+
+END_TYPE
+

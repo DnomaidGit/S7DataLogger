@@ -1,0 +1,42 @@
+﻿FUNCTION "#DATA_INPUT_FILTER_EAN13" : Void
+TITLE = Data input filter EAN13
+{ S7_Optimized_Access := 'TRUE' }
+AUTHOR : QLR
+FAMILY : dnomaiD
+VERSION : 9.0
+   VAR_INPUT 
+      Data : Array[1..13] of Char;
+   END_VAR
+
+   VAR_OUTPUT 
+      OK : Bool;
+   END_VAR
+
+   VAR_TEMP 
+      "Counter" : Int;
+   END_VAR
+
+   VAR CONSTANT 
+      ArrayIni : Int := 1;
+      ArrayEnd : Int := 13;
+      Chr_Space : Byte := B#32;
+      Chr_0 : Byte := B#48;
+      Chr_9 : Byte := B#57;
+      Chr_Null : Byte := B#00;
+   END_VAR
+
+
+BEGIN
+	#OK := FALSE;
+	FOR #Counter := #ArrayIni TO #ArrayEnd DO //#Data #OK
+	    IF (#Data[#Counter]>=#Chr_0 AND #Data[#Counter]<=#Chr_9) OR #Data[#Counter]=#Chr_Space OR #Data[#Counter]=#Chr_Null  THEN
+	        #OK := TRUE;
+	    ELSE
+	        #OK := FALSE;
+	        EXIT;
+	    END_IF;
+	END_FOR;
+	
+	
+END_FUNCTION
+

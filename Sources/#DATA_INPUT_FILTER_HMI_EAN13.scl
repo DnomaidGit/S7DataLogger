@@ -1,0 +1,59 @@
+﻿FUNCTION "#DATA_INPUT_FILTER_HMI_EAN13" : Void
+TITLE = Data input filter HMI EAN13
+{ S7_Optimized_Access := 'TRUE' }
+AUTHOR : QLR
+FAMILY : dnomaiD
+VERSION : 9.0
+   VAR_IN_OUT 
+      Data : Array[1..13] of Char;
+   END_VAR
+
+   VAR_TEMP 
+      "Counter" : Int;
+      OK : Bool;
+      ChrSpaceCounter : Int;
+      ChrShift : Int;
+      StringAux : String;
+   END_VAR
+
+   VAR CONSTANT 
+      ArrayIni : Int := 1;
+      ArrayEnd : Int := 13;
+      Chr_Space : Byte := B#32;
+      Chr_0 : Byte := B#48;
+      Chr_9 : Byte := B#57;
+      Chr_Null : Byte := B#00;
+   END_VAR
+
+
+BEGIN
+	
+	"#DATA_INPUT_FILTER_EAN13"(OK=>#OK, Data:=#Data);
+	
+	#ChrSpaceCounter := #ArrayIni;
+	FOR #Counter := #ArrayIni TO #ArrayEnd DO //Chr Space Counter
+	    IF (#Data[#Counter] = #Chr_Space OR #Data[#Counter]=#Chr_Null) AND #OK THEN
+	        #ChrSpaceCounter := 1 + #ChrSpaceCounter;
+	    END_IF;
+	END_FOR;
+	#ChrShift := #ChrSpaceCounter;
+	FOR #Counter := #ArrayIni TO #ArrayEnd DO //Chr Shift 
+	    IF (#ChrShift<=#ArrayEnd) AND #OK THEN
+	        IF #Data[#ChrShift] = #Chr_Null THEN
+	            #Data[#ChrShift] := #Data[#Counter];
+	            #Data[#Counter] := #Chr_Space;
+	        END_IF;
+	        #ChrShift := 1 + #ChrShift;
+	    ELSE
+	        #Counter := #ArrayEnd;
+	        EXIT;
+	    END_IF;
+	END_FOR;
+	FOR #Counter := #ArrayIni TO #ArrayEnd DO //Replace Chr_0
+	    IF (#Data[#Counter] = #Chr_Space OR #Data[#Counter] = #Chr_Null) AND #OK THEN
+	        #Data[#Counter] := #Chr_0;
+	    END_IF;
+	END_FOR;
+	
+END_FUNCTION
+

@@ -1,0 +1,31 @@
+﻿TYPE "UDT_BARCODE_SCANNER"
+AUTHOR : QLR
+FAMILY : DATABASE
+VERSION : 0.1
+   STRUCT
+      Number : Int;   // Scanner number
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "UDT_BARCODE_CODE"
+AUTHOR : QLR
+FAMILY : DATABASE
+VERSION : 0.1
+   STRUCT
+      Digit : Array[1..13] of Char;   // ::EAN-13
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "UDT_BARCODE"
+AUTHOR : QLR
+FAMILY : DATABASE
+VERSION : 0.1
+   STRUCT
+      Code : "UDT_BARCODE_CODE";   // ::EAN-13
+      Scanner : "UDT_BARCODE_SCANNER";   // ::Scanner
+   END_STRUCT;
+
+END_TYPE
+

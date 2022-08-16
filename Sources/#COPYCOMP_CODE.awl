@@ -1,0 +1,141 @@
+﻿FUNCTION "#COPYCOMP_CODE" : Void
+TITLE = Copy||Compare
+{ S7_Optimized_Access := 'FALSE' }
+AUTHOR : QLR
+FAMILY : dnomaiD
+VERSION : 9.0
+   VAR_INPUT 
+      Copy : Bool;
+      Compare : Bool;
+   END_VAR
+
+   VAR_OUTPUT 
+      EqualData : Bool;
+      DifferentData : Bool;
+      CopyData : Bool;
+   END_VAR
+
+   VAR_IN_OUT 
+      _01Data : "UDT_BARCODE_CODE";
+      _02Data : "UDT_BARCODE_CODE";
+   END_VAR
+
+   VAR_TEMP 
+      Code : "UDT_BARCODE_CODE";
+      SaveAR1 : DWord;
+      SaveAR2 : DWord;
+      SaveSTW : DWord;
+      NumDB01 : Int;
+      NumDB02 : Int;
+      Long : Int;
+      Counter01 : Int;
+      LongAR : DInt;
+   END_VAR
+
+
+BEGIN
+NETWORK
+TITLE = Home
+      TAR1 #SaveAR1;
+      TAR2 #SaveAR2;
+      L STW;
+      T #SaveSTW;
+
+      SET;
+      R #EqualData;
+      R #DifferentData;
+      R #CopyData;
+
+      L P##Code;
+      L P##SaveAR1;
+      XOD;
+      L 8;
+      /D;
+      T #Long;
+      L P#1.0;
+      T #LongAR;
+
+      L P##_01Data;
+      LAR1;
+      L LW[ AR1, P#0.0];
+      T #NumDB01;
+      L LW[ AR1, P#4.0];
+      LAR1;
+      OPN DB[ #NumDB01];
+
+      L P##_02Data;
+      LAR2;
+      L LW[ AR2, P#0.0];
+      T #NumDB02;
+      L LW[ AR2, P#4.0];
+      LAR2;
+      OPN DI[ #NumDB02];
+NETWORK
+TITLE = Copy
+      AN #Copy;
+      JC COWF;
+      L #Long;
+COW0:      NOP 0;
+      T #Counter01;
+      L DBB[ AR1, P#0.0];
+      T DIB[ AR2, P#0.0];
+      L #LongAR;
+      +AR1;
+      +AR2;
+      L #Counter01;
+      LOOP COW0;
+      SET;
+      S #CopyData;
+      S #EqualData;
+      JU END;
+COWF:      NOP 0;
+      SET;
+      R #CopyData;
+      JU COFF;
+COFF:      NOP 0;
+NETWORK
+TITLE = Compare
+      AN #Compare;
+      JC CMWF;
+      L #Long;
+CM00:      NOP 0;
+      T #Counter01;
+      L DBB[ AR1, P#0.0];
+      L DIB[ AR2, P#0.0];
+      <>I;
+      JC CM01;
+      L #LongAR;
+      +AR1;
+      +AR2;
+      L #Counter01;
+      LOOP CM00;
+      SET;
+      S #EqualData;
+      R #DifferentData;
+      JU CMFF;
+      JU CM01;
+CM01:      NOP 0;
+      SET;
+      R #EqualData;
+      S #DifferentData;
+      JU CMFF;
+      JU CMWF;
+CMWF:      NOP 0;
+      SET;
+      R #EqualData;
+      R #DifferentData;
+      JU CMFF;
+CMFF:      NOP 0;
+NETWORK
+TITLE = End
+      JU END;
+END:      NOP 0;
+      LAR1 #SaveAR1;
+      LAR2 #SaveAR2;
+      L #SaveSTW;
+      T STW;
+      SET;
+      SAVE;
+      BE;
+END_FUNCTION
+

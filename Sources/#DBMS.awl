@@ -1,0 +1,2608 @@
+﻿FUNCTION_BLOCK "#DBMS"
+TITLE = DBMS
+{ S7_Optimized_Access := 'FALSE' }
+AUTHOR : QLR
+FAMILY : dnomaiD
+VERSION : 9.0
+//TABLE: BarcodeData.Code | BarcodeData.Scanner | DateTime
+//PRIMARY KEY: BarcodeData.Code
+   VAR_INPUT 
+      PerEmptyAuto : Bool;   // Allow to empty db when it is full
+      Request : "UDT_DATABASE_M_REQUEST";   // Request
+      DateTime : Date_And_Time;   // Date and time
+      Reset : Bool;   // Reset
+   END_VAR
+
+   VAR_OUTPUT 
+      Response : "UDT_DATABASE_M_RESPONSE";
+      FbFault : Bool;   // Fb fault
+      RetVal : Int;   // Return value
+      DataError : Bool;   // Data Error
+      Log : "UDT_LOG";
+   END_VAR
+
+   VAR_IN_OUT 
+      Status : "UDT_DATABASE_M_STATUS";
+      LIST_DB : "UDT_DATABASE_DB_LIST_CONFIG";
+      TIME_FillAll {OriginalPartName := 'IEC_TIMER'; LibVersion := '1.0'} : IEC_TIMER;
+   END_VAR
+
+   VAR 
+      InsertData : "UDT_DATABASE_TABLE";
+      IniData : "UDT_DATABASE_TABLE";
+      FAULT : Bool;   // Fault
+      FULL : Bool;   // Full
+      NOT_FULL : Bool;   // Not full
+      DATA_ERROR : Bool;   // Data error
+      QueryData : "UDT_BARCODE_CODE";
+      DeleteData : "UDT_BARCODE_CODE";
+      P_RET_VAL : Struct
+         MEM : Int;
+         X : Int;
+         V : Array[1..5] of Int;
+      END_STRUCT;
+      AUX : Struct
+         FullDatabase : Bool;
+         PushDatabase : Bool;
+         DifferentValue : Bool;
+         EmptyData : Bool;
+         xByte : Byte;
+         xInt : Int;
+         LNG : Int;
+         LD_01 : DInt;
+         LD_02 : DInt;
+         LW_01 : DInt;
+         StatusPermInsert_nDB : Bool;
+      END_STRUCT;
+      COUNT : Struct
+         cA00 : Int;
+         cB00 : Int;
+         cD00 : Int;
+         cF00 : Int;
+         dA00 : Int;
+         dC00 : Int;
+         dE00 : Int;
+         fA00 : Int;
+         fA01 : Int;
+         fA02 : Int;
+         gA00 : Int;
+         hA00 : Int;
+         hA01 : Int;
+         hA02 : Int;
+      END_STRUCT;
+      SAVE_AR1 : Struct
+         dC00 : DWord;
+         dE00 : DWord;
+         fA10 : DWord;
+         hA10 : DWord;
+      END_STRUCT;
+      FP_REQUEST : Struct
+         InsertDB : Bool;
+         QueryDB : Bool;
+         DeleteDB : Bool;
+      END_STRUCT;
+      LENGTH : Struct
+         Data : Int;
+         PointerData : DInt;
+         Code : Int;
+         AllDataPushDB : Array[1..6] of Int;
+      END_STRUCT;
+      NumDataArrayDB : Array[1..6] of Int;
+      NDB : Int;   // Number DB
+      AuxQuantityDB : Int;   // Aux. quantity DB
+      QuantityDB : Int;   // Quantity DB
+      QuantityLabelDB : Int;   // Quantity Label DB
+      MaxQuantityDB : Int;   // Maxim quantity DB
+      NetworkReturn : Int;   // Network return
+      DataInputOK : Bool;   // Data input OK
+      DigitFilter : "UDT_BARCODE";   // ::EAN-13
+   END_VAR
+
+   VAR_TEMP 
+      Code : "UDT_BARCODE_CODE";
+      SaveAR1 : DWord;
+      SaveSTW : DWord;
+      ANY_DB_SELECT_I : Any;
+      ANY_DB_SELECT_F : Any;
+      ANY_DB1_I : Any;
+      ANY_DB1_F : Any;
+      ANY_DB1_B : Any;
+      ANY_DB1_IE : Any;
+      ANY_DB1_FE : Any;
+      ANY_DB2_I : Any;
+      ANY_DB2_F : Any;
+      ANY_DB2_IE : Any;
+      ANY_DB2_FE : Any;
+      ANY_DB3_I : Any;
+      ANY_DB3_F : Any;
+      ANY_DB3_IE : Any;
+      ANY_DB3_FE : Any;
+      ANY_DB4_I : Any;
+      ANY_DB4_F : Any;
+      ANY_DB4_IE : Any;
+      ANY_DB4_FE : Any;
+      ANY_DB5_I : Any;
+      ANY_DB5_F : Any;
+      ANY_DB5_IE : Any;
+      ANY_DB5_FE : Any;
+      ANY_DB6_I : Any;
+      ANY_DB6_F : Any;
+      ANY_DB6_IE : Any;
+      ANY_DB6_FE : Any;
+      ANY_DB_QUERY : Any;
+      ANY_DB_DELETE : Any;
+      PAUXnDB : Int;
+      PanDB : Array[1..6] of Int;
+      P_STATUS : Struct
+         nDB : Int;
+         Adr_S_DB : DWord;
+         Adr_E_DB : DWord;
+         PermInsert : Bool;
+         PermOut : Bool;
+         MemFull : Bool;
+         PermPush : Bool;
+      END_STRUCT;
+      P_ADR : Struct
+         AUX : DWord;
+         I : DWord;
+         F : DWord;
+         I_DB : Array[1..6] of DWord;
+         F_DB : Array[1..6] of DWord;
+         SAVE_COMP_01 : DWord;
+         COMP_01 : DWord;
+         COMP_02 : DWord;
+      END_STRUCT;
+      LIST_DB_T : "UDT_DATABASE_DB_LIST";
+   END_VAR
+
+   VAR CONSTANT 
+      Network_1 : Int := 100;
+      Network_2 : Int := 200;
+      Network_3 : Int := 300;
+      Network_4 : Int := 400;
+      Network_5 : Int := 500;
+      Network_6 : Int := 600;
+      Network_7 : Int := 700;
+      Network_8 : Int := 800;
+      Network_9 : Int := 900;
+      Network_10 : Int := 1000;
+      Network_11 : Int := 1100;
+      Network_12 : Int := 1200;
+      Network_13 : Int := 1300;
+      Network_14 : Int := 1400;
+      Network_15 : Int := 1500;
+      Network_16 : Int := 1600;
+      Network_17 : Int := 1700;
+      LogInsert : Int := 1;   // Insert
+      LogDelete : Int := 2;   // Delete
+      LogDataAvailable : Int := 3;   // Query: Data available
+      LogDataNotAvailable : Int := 4;   // Query: Data not available
+      LogDataInputNOK : Int := 5;   // Data input NOK
+      LogFullData : Int := 6;   // No inserted data base full
+   END_VAR
+
+
+BEGIN
+NETWORK
+TITLE = --Start--
+      L #Network_1;
+      T #P_RET_VAL.MEM;
+      TAR1 #SaveAR1;
+      L STW;
+      T #SaveSTW;
+
+      A #Reset;
+      JC AA;
+      A #FAULT;
+      S #Status.Fb_Fault;
+      JC END;
+      A #DATA_ERROR;
+      S #Status.DataError;
+      JC AF;
+AA:      NOP 0;
+      R #FAULT;
+      R #Status.Fb_Fault;
+      R #DATA_ERROR;
+      R #Status.DataError;
+AF:      NOP 0;
+NETWORK
+TITLE = --Timer--
+      CALL TOF, #TIME_FillAll
+      {time_type := 'Time'}
+      (  IN                          := #FULL , 
+         PT                          := t#250ms
+      );
+
+      A #TIME_FillAll.Q;
+      = #Status.Mem.FillAll;
+NETWORK
+TITLE = --Setting--
+      L #Network_3;
+      T #P_RET_VAL.MEM;
+      L P##Code;
+      L P##SaveAR1;
+      XOD;
+      L 8;
+      /D;
+      T #LENGTH.Code;
+      L ' ';
+      T #AUX.xByte;
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #AUX.xByte , 
+         RET_VAL                     := #P_RET_VAL.X , 
+         BLK                         := #IniData.BarcodeData.Code
+      );
+      L 0;
+      T #AUX.xInt;
+      L P##FAULT;
+      L P##IniData;
+      -D;
+      T #LENGTH.PointerData;
+      L 8;
+      /D;
+      T #LENGTH.Data;
+      CLR;
+      = #AUX.FullDatabase;
+      L 5;
+      T #MaxQuantityDB;
+      L #LIST_DB.DbNumber[1];
+      T #LIST_DB_T.DbNumber[1];
+      L #LIST_DB.DbNumber[2];
+      T #LIST_DB_T.DbNumber[2];
+      L #LIST_DB.DbNumber[3];
+      T #LIST_DB_T.DbNumber[3];
+      L #LIST_DB.DbNumber[4];
+      T #LIST_DB_T.DbNumber[4];
+      L #LIST_DB.DbNumber[5];
+      T #LIST_DB_T.DbNumber[5];
+      L 0;
+      T #LIST_DB_T.DbNumber[6];
+      L 0;
+      T #AuxQuantityDB;
+
+      L P##LIST_DB;
+      LAR1;
+      L W[ AR1, P#0.0];
+      T #NDB;
+      L W[ AR1, P#4.0];
+      LAR1;
+bA01:      NOP 0;
+      OPN DB[ #NDB];
+      L DBW[ AR1, P#0.0];
+      L 0;
+      ==I;
+      JC bA02;
+      L #AuxQuantityDB;
+      L 1;
+      +I;
+      T #AuxQuantityDB;
+      L #MaxQuantityDB;
+      L #AuxQuantityDB;
+      <=I;
+      JC bA02;
+      L P#2.0;
+      +AR1;
+      JU bA01;
+bA02:      NOP 0;
+      L #AuxQuantityDB;
+      L 1;
+      <I;
+      S #FAULT;
+      JC END;
+      L #AuxQuantityDB;
+      L #MaxQuantityDB;
+      >I;
+      S #FAULT;
+      JC END;
+      L #AuxQuantityDB;
+      T #QuantityDB;
+      L #QuantityDB;
+      T #LIST_DB.QuantityDB;
+      T #LIST_DB_T.QuantityDB;
+NETWORK
+TITLE = cA..Any DB
+      L #Network_4;
+      T #P_RET_VAL.MEM;
+      L #MaxQuantityDB;
+      T #QuantityLabelDB;
+      L 1;
+      T #COUNT.cA00;
+      JU cA00;
+cA00:      NOP 0;
+      L #COUNT.cA00;
+      JL cAXX;
+      JU cAFF;
+      JU cA11;//Any db[1]: First> data
+      JU cA12;//Any db[1]: First> data, Length> all data - 1  
+      JU cA13;//Any db[1]: Last> data 
+      JU cA14;//Any db[1]: Second> data, Length> all data - 1
+      JU cA21;//Any db[2]: First> data
+      JU cA22;//Any db[2]: First> data, Length> all data - 1
+      JU cA23;//Any db[2]: Last> data
+      JU cA24;//Any db[2]: Second> data, Length> all data - 1
+      JU cA31;//Any db[3]: First> data
+      JU cA32;//Any db[3]: First> data, Length> all data - 1
+      JU cA33;//Any db[3]: Last> data
+      JU cA34;//Any db[3]: Second> data, Length> all data - 1
+      JU cA41;//Any db[4]: First> data
+      JU cA42;//Any db[4]: First> data, Length> all data - 1
+      JU cA43;//Any db[4]: Last> data
+      JU cA44;//Any db[4]: Second> data, Length> all data - 1
+      JU cA51;//Any db[5]: First> data
+      JU cA52;//Any db[5]: First> data, Length> all data - 1
+      JU cA53;//Any db[5]: Last> data
+      JU cA54;//Any db[5]: Second> data, Length> all data - 1
+      JU cA61;//Any db[6]: First> data
+      JU cA62;//Any db[6]: First> data, Length> all data - 1
+      JU cA63;//Any db[6]: Last> data
+      JU cA64;//Any db[6]: Second> data, Length> all data - 1
+cAXX:      JU cAFF;
+cA11:      NOP 0;
+      OPN DB[ #LIST_DB_T.DbNumber[1]];
+      L DBNO;
+      T #PanDB[1];
+      T #PAUXnDB;//Aux
+      L #LENGTH.Data;
+      T #AUX.LNG;//Aux
+      L P#0.0;
+      L DW#16#84000000;
+      +D;
+      T #P_ADR.I_DB[1];
+      T #P_ADR.AUX;//Aux
+      LAR1 P##ANY_DB1_I;
+      JU cAFI;
+cA12:      NOP 0;
+      OPN DB[ #LIST_DB_T.DbNumber[1]];
+      L DBLG;
+      L #LENGTH.Data;
+      /D;
+      T #NumDataArrayDB[1];
+      L -1;
+      +I;
+      L #LENGTH.Data;
+      *I;
+      T #LENGTH.AllDataPushDB[1];
+      T #AUX.LNG;//Aux
+      L #P_ADR.I_DB[1];
+      T #P_ADR.AUX;//Aux
+      LAR1 P##ANY_DB1_IE;
+      JU cAFI;
+cA13:      NOP 0;
+      L #LENGTH.Data;
+      T #AUX.LNG;//Aux
+      OPN DB[ #LIST_DB_T.DbNumber[1]];
+      L DBLG;
+      L #LENGTH.Data;
+      -D;
+      L 8;
+      *D;
+      L DW#16#84000000;
+      +D;
+      T #P_ADR.F_DB[1];
+      T #P_ADR.AUX;//Aux
+      LAR1 P##ANY_DB1_F;
+      JU cAFI;
+cA14:      NOP 0;
+      L #LENGTH.AllDataPushDB[1];
+      T #AUX.LNG;//Aux
+      L #LENGTH.PointerData;
+      L DW#16#84000000;
+      +D;
+      T #P_ADR.AUX;//Aux
+      LAR1 P##ANY_DB1_FE;
+      JU cAFI;
+cA21:      NOP 0;
+      OPN DB[ #LIST_DB_T.DbNumber[2]];
+      L DBNO;
+      T #PanDB[2];
+      T #PAUXnDB;//Aux
+      L #LENGTH.Data;
+      T #AUX.LNG;//Aux
+      L P#0.0;
+      L DW#16#84000000;
+      +D;
+      T #P_ADR.I_DB[2];
+      T #P_ADR.AUX;//Aux
+      LAR1 P##ANY_DB2_I;
+      JU cAFI;
+cA22:      NOP 0;
+      OPN DB[ #LIST_DB_T.DbNumber[2]];
+      L DBLG;
+      L #LENGTH.Data;
+      /D;
+      T #NumDataArrayDB[2];
+      L -1;
+      +I;
+      L #LENGTH.Data;
+      *I;
+      T #LENGTH.AllDataPushDB[2];
+      T #AUX.LNG;//Aux
+      L #P_ADR.I_DB[2];
+      T #P_ADR.AUX;//Aux
+      LAR1 P##ANY_DB2_IE;
+      JU cAFI;
+cA23:      NOP 0;
+      L #LENGTH.Data;
+      T #AUX.LNG;//Aux
+      OPN DB[ #LIST_DB_T.DbNumber[2]];
+      L DBLG;
+      L #LENGTH.Data;
+      -D;
+      L 8;
+      *D;
+      L DW#16#84000000;
+      +D;
+      T #P_ADR.F_DB[2];
+      T #P_ADR.AUX;//Aux
+      LAR1 P##ANY_DB2_F;
+      JU cAFI;
+cA24:      NOP 0;
+      L #LENGTH.AllDataPushDB[2];
+      T #AUX.LNG;//Aux
+      L #LENGTH.PointerData;
+      L DW#16#84000000;
+      +D;
+      T #P_ADR.AUX;//Aux
+      LAR1 P##ANY_DB2_FE;
+      JU cAFI;
+cA31:      NOP 0;
+      OPN DB[ #LIST_DB_T.DbNumber[3]];
+      L DBNO;
+      T #PanDB[3];
+      T #PAUXnDB;//Aux
+      L #LENGTH.Data;
+      T #AUX.LNG;//Aux
+      L P#0.0;
+      L DW#16#84000000;
+      +D;
+      T #P_ADR.I_DB[3];
+      T #P_ADR.AUX;//Aux
+      LAR1 P##ANY_DB3_I;
+      JU cAFI;
+cA32:      NOP 0;
+      OPN DB[ #LIST_DB_T.DbNumber[3]];
+      L DBLG;
+      L #LENGTH.Data;
+      /D;
+      T #NumDataArrayDB[3];
+      L -1;
+      +I;
+      L #LENGTH.Data;
+      *I;
+      T #LENGTH.AllDataPushDB[3];
+      T #AUX.LNG;//Aux
+      L #P_ADR.I_DB[3];
+      T #P_ADR.AUX;//Aux
+      LAR1 P##ANY_DB3_IE;
+      JU cAFI;
+cA33:      NOP 0;
+      L #LENGTH.Data;
+      T #AUX.LNG;//Aux
+      OPN DB[ #LIST_DB_T.DbNumber[3]];
+      L DBLG;
+      L #LENGTH.Data;
+      -D;
+      L 8;
+      *D;
+      L DW#16#84000000;
+      +D;
+      T #P_ADR.F_DB[3];
+      T #P_ADR.AUX;//Aux
+      LAR1 P##ANY_DB3_F;
+      JU cAFI;
+cA34:      NOP 0;
+      L #LENGTH.AllDataPushDB[3];
+      T #AUX.LNG;//Aux
+      L #LENGTH.PointerData;
+      L DW#16#84000000;
+      +D;
+      T #P_ADR.AUX;//Aux
+      LAR1 P##ANY_DB3_FE;
+      JU cAFI;
+cA41:      NOP 0;
+      OPN DB[ #LIST_DB_T.DbNumber[4]];
+      L DBNO;
+      T #PanDB[4];
+      T #PAUXnDB;//Aux
+      L #LENGTH.Data;
+      T #AUX.LNG;//Aux
+      L P#0.0;
+      L DW#16#84000000;
+      +D;
+      T #P_ADR.I_DB[4];
+      T #P_ADR.AUX;//Aux
+      LAR1 P##ANY_DB4_I;
+      JU cAFI;
+cA42:      NOP 0;
+      OPN DB[ #LIST_DB_T.DbNumber[4]];
+      L DBLG;
+      L #LENGTH.Data;
+      /D;
+      T #NumDataArrayDB[4];
+      L -1;
+      +I;
+      L #LENGTH.Data;
+      *I;
+      T #LENGTH.AllDataPushDB[4];
+      T #AUX.LNG;//Aux
+      L #P_ADR.I_DB[4];
+      T #P_ADR.AUX;//Aux
+      LAR1 P##ANY_DB4_IE;
+      JU cAFI;
+cA43:      NOP 0;
+      L #LENGTH.Data;
+      T #AUX.LNG;//Aux
+      OPN DB[ #LIST_DB_T.DbNumber[4]];
+      L DBLG;
+      L #LENGTH.Data;
+      -D;
+      L 8;
+      *D;
+      L DW#16#84000000;
+      +D;
+      T #P_ADR.F_DB[4];
+      T #P_ADR.AUX;//Aux
+      LAR1 P##ANY_DB4_F;
+      JU cAFI;
+cA44:      NOP 0;
+      L #LENGTH.AllDataPushDB[4];
+      T #AUX.LNG;//Aux
+      L #LENGTH.PointerData;
+      L DW#16#84000000;
+      +D;
+      T #P_ADR.AUX;//Aux
+      LAR1 P##ANY_DB4_FE;
+      JU cAFI;
+cA51:      NOP 0;
+      OPN DB[ #LIST_DB_T.DbNumber[5]];
+      L DBNO;
+      T #PanDB[5];
+      T #PAUXnDB;//Aux
+      L #LENGTH.Data;
+      T #AUX.LNG;//Aux
+      L P#0.0;
+      L DW#16#84000000;
+      +D;
+      T #P_ADR.I_DB[5];
+      T #P_ADR.AUX;//Aux
+      LAR1 P##ANY_DB5_I;
+      JU cAFI;
+cA52:      NOP 0;
+      OPN DB[ #LIST_DB_T.DbNumber[5]];
+      L DBLG;
+      L #LENGTH.Data;
+      /D;
+      T #NumDataArrayDB[5];
+      L -1;
+      +I;
+      L #LENGTH.Data;
+      *I;
+      T #LENGTH.AllDataPushDB[5];
+      T #AUX.LNG;//Aux
+      L #P_ADR.I_DB[5];
+      T #P_ADR.AUX;//Aux
+      LAR1 P##ANY_DB5_IE;
+      JU cAFI;
+cA53:      NOP 0;
+      L #LENGTH.Data;
+      T #AUX.LNG;//Aux
+      OPN DB[ #LIST_DB_T.DbNumber[5]];
+      L DBLG;
+      L #LENGTH.Data;
+      -D;
+      L 8;
+      *D;
+      L DW#16#84000000;
+      +D;
+      T #P_ADR.F_DB[5];
+      T #P_ADR.AUX;//Aux
+      LAR1 P##ANY_DB5_F;
+      JU cAFI;
+cA54:      NOP 0;
+      L #LENGTH.AllDataPushDB[5];
+      T #AUX.LNG;//Aux
+      L #LENGTH.PointerData;
+      L DW#16#84000000;
+      +D;
+      T #P_ADR.AUX;//Aux
+      LAR1 P##ANY_DB5_FE;
+      JU cAFI;
+cA61:      NOP 0;
+      OPN DB[ #LIST_DB_T.DbNumber[6]];
+      L DBNO;
+      T #PanDB[6];
+      T #PAUXnDB;//Aux
+      L #LENGTH.Data;
+      T #AUX.LNG;//Aux
+      L P#0.0;
+      L DW#16#84000000;
+      +D;
+      T #P_ADR.I_DB[6];
+      T #P_ADR.AUX;//Aux
+      LAR1 P##ANY_DB6_I;
+      JU cAFI;
+cA62:      NOP 0;
+      OPN DB[ #LIST_DB_T.DbNumber[6]];
+      L DBLG;
+      L #LENGTH.Data;
+      /D;
+      T #NumDataArrayDB[6];
+      L -1;
+      +I;
+      L #LENGTH.Data;
+      *I;
+      T #LENGTH.AllDataPushDB[6];
+      T #AUX.LNG;//Aux
+      L #P_ADR.I_DB[6];
+      T #P_ADR.AUX;//Aux
+      LAR1 P##ANY_DB6_IE;
+      JU cAFI;
+cA63:      NOP 0;
+      L #LENGTH.Data;
+      T #AUX.LNG;//Aux
+      OPN DB[ #LIST_DB_T.DbNumber[6]];
+      L DBLG;
+      L #LENGTH.Data;
+      -D;
+      L 8;
+      *D;
+      L DW#16#84000000;
+      +D;
+      T #P_ADR.F_DB[6];
+      T #P_ADR.AUX;//Aux
+      LAR1 P##ANY_DB6_F;
+      JU cAFI;
+cA64:      NOP 0;
+      L #LENGTH.AllDataPushDB[6];
+      T #AUX.LNG;//Aux
+      L #LENGTH.PointerData;
+      L DW#16#84000000;
+      +D;
+      T #P_ADR.AUX;//Aux
+      LAR1 P##ANY_DB6_FE;
+      JU cAFI;
+cAFI:      NOP 0;
+      L B#16#10;
+      T LB[ AR1, P#0.0];
+      L B#16#2;
+      T LB[ AR1, P#1.0];
+      L #AUX.LNG;
+      T LW[ AR1, P#2.0];
+      L #PAUXnDB;
+      T LW[ AR1, P#4.0];
+      L #P_ADR.AUX;
+      T LD[ AR1, P#6.0];
+      L #COUNT.cA00;
+      + 1;
+      T #COUNT.cA00;
+      L #QuantityDB;
+      L #QuantityLabelDB;
+      *I;
+      L #COUNT.cA00;
+      <I;
+      JC cAFF;
+      JU cA00;
+//--->END
+cAFF:      NOP 0;
+NETWORK
+TITLE = cB..Status
+      L #Network_5;
+      T #P_RET_VAL.MEM;
+      L 1;
+      T #COUNT.cB00;
+      JU cB00;
+cB00:      NOP 0;
+      L #COUNT.cB00;
+      JL cBXX;
+      JU cBEE;//fault
+      JU cB11;//db[1]
+      JU cB21;//db[2]
+      JU cB31;//db[3]
+      JU cB41;//db[4]
+      JU cB51;//db[5]
+      JU cB61;//db[6]
+cBXX:      JU cBFF;//end
+cB11:      NOP 0;
+      L #PanDB[1];
+      T #P_STATUS.nDB;
+      L #P_ADR.I_DB[1];
+      T #P_STATUS.Adr_S_DB;
+      L #P_ADR.F_DB[1];
+      T #P_STATUS.Adr_E_DB;
+      JU cBWW;
+cB21:      NOP 0;
+      L #PanDB[2];
+      T #P_STATUS.nDB;
+      L #P_ADR.I_DB[2];
+      T #P_STATUS.Adr_S_DB;
+      L #P_ADR.F_DB[2];
+      T #P_STATUS.Adr_E_DB;
+      JU cBWW;
+cB31:      NOP 0;
+      L #PanDB[3];
+      T #P_STATUS.nDB;
+      L #P_ADR.I_DB[3];
+      T #P_STATUS.Adr_S_DB;
+      L #P_ADR.F_DB[3];
+      T #P_STATUS.Adr_E_DB;
+      JU cBWW;
+cB41:      NOP 0;
+      L #PanDB[4];
+      T #P_STATUS.nDB;
+      L #P_ADR.I_DB[4];
+      T #P_STATUS.Adr_S_DB;
+      L #P_ADR.F_DB[4];
+      T #P_STATUS.Adr_E_DB;
+      JU cBWW;
+cB51:      NOP 0;
+      L #PanDB[5];
+      T #P_STATUS.nDB;
+      L #P_ADR.I_DB[5];
+      T #P_STATUS.Adr_S_DB;
+      L #P_ADR.F_DB[5];
+      T #P_STATUS.Adr_E_DB;
+      JU cBWW;
+cB61:      NOP 0;
+      L #PanDB[6];
+      T #P_STATUS.nDB;
+      L #P_ADR.I_DB[6];
+      T #P_STATUS.Adr_S_DB;
+      L #P_ADR.F_DB[6];
+      T #P_STATUS.Adr_E_DB;
+      JU cBWW;
+cBEE:      NOP 0;
+      SET;
+      S #FAULT;
+      JU END;
+cBWW:      NOP 0;
+      OPN DB[ #P_STATUS.nDB];
+      LAR1 #P_STATUS.Adr_E_DB;
+      L DBB[ AR1, P#0.0];
+      L ' ';
+      ==I;
+      = #P_STATUS.PermInsert;
+      OPN DB[ #P_STATUS.nDB];
+      LAR1 #P_STATUS.Adr_S_DB;
+      L DBB[ AR1, P#0.0];
+      L ' ';
+      <>I;
+      = #P_STATUS.PermOut;
+      AN #P_STATUS.PermOut;
+      A #P_STATUS.MemFull;
+      = #P_STATUS.PermPush;
+
+      L #COUNT.cB00;
+      JL cCXX;
+      JU cCXX;//End
+      JU cC11;//db[1]
+      JU cC21;//db[2]
+      JU cC31;//db[3]
+      JU cC41;//db[4]
+      JU cC51;//db[5]
+      JU cC61;//db[6]
+cCXX:      JU cBFF;
+cC11:      NOP 0;
+      A #P_STATUS.PermInsert;
+      = #Status.Perm.Insert_nDB[1];
+      R #Status.Mem.Full_nDB[1];
+      A #P_STATUS.PermOut;
+      = #Status.Perm.Out_nDB[1];
+      A #P_STATUS.PermPush;
+      = #Status.Perm.Push_nDB[1];
+      JU cCFI;
+cC21:      NOP 0;
+      A #P_STATUS.PermInsert;
+      = #Status.Perm.Insert_nDB[2];
+      R #Status.Mem.Full_nDB[2];
+      A #P_STATUS.PermOut;
+      = #Status.Perm.Out_nDB[2];
+      A #P_STATUS.PermPush;
+      = #Status.Perm.Push_nDB[2];
+      JU cCFI;
+cC31:      NOP 0;
+      A #P_STATUS.PermInsert;
+      = #Status.Perm.Insert_nDB[3];
+      R #Status.Mem.Full_nDB[3];
+      A #P_STATUS.PermOut;
+      = #Status.Perm.Out_nDB[3];
+      A #P_STATUS.PermPush;
+      = #Status.Perm.Push_nDB[3];
+      JU cCFI;
+cC41:      NOP 0;
+      A #P_STATUS.PermInsert;
+      = #Status.Perm.Insert_nDB[4];
+      R #Status.Mem.Full_nDB[4];
+      A #P_STATUS.PermOut;
+      = #Status.Perm.Out_nDB[4];
+      A #P_STATUS.PermPush;
+      = #Status.Perm.Push_nDB[4];
+      JU cCFI;
+cC51:      NOP 0;
+      A #P_STATUS.PermInsert;
+      = #Status.Perm.Insert_nDB[5];
+      R #Status.Mem.Full_nDB[5];
+      A #P_STATUS.PermOut;
+      = #Status.Perm.Out_nDB[5];
+      A #P_STATUS.PermPush;
+      = #Status.Perm.Push_nDB[5];
+      JU cCFI;
+cC61:      NOP 0;
+      A #P_STATUS.PermInsert;
+      = #Status.Perm.Insert_nDB[6];
+      R #Status.Mem.Full_nDB[6];
+      A #P_STATUS.PermOut;
+      = #Status.Perm.Out_nDB[6];
+      A #P_STATUS.PermPush;
+      = #Status.Perm.Push_nDB[6];
+      JU cCFI;
+cCFI:      NOP 0;
+      L #COUNT.cB00;
+      + 1;
+      T #COUNT.cB00;
+      L #QuantityDB;
+      >I;
+      JC cBFF;
+      JU cB00;
+      JU cBFF;
+cBFF:      NOP 0;
+NETWORK
+TITLE = cD..Move data DB_DATABASE0X<-DB_DATABASE0X+1
+      L #Network_6;
+      T #P_RET_VAL.MEM;
+      L #MaxQuantityDB;
+      L #QuantityDB;
+      -I;
+      L 1;
+      +I;
+      T #COUNT.cD00;
+      JU cD00;
+cD00:      NOP 0;
+      L #COUNT.cD00;
+      JL cDXX;
+      JU cDEE;//fault
+      JU cD61;//db[6]
+      JU cD51;//db[5]
+      JU cD41;//db[4]
+      JU cD31;//db[3]
+      JU cD21;//db[2]
+cDXX:      JU cDFF;//end
+cD61:      NOP 0;
+      A #Status.Perm.Out_nDB[6];
+      A #Status.Perm.Insert_nDB[5];
+      JCN cDFI;
+      L #P_RET_VAL.MEM;
+      T #P_RET_VAL.V[1];
+      T #P_RET_VAL.V[2];
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #ANY_DB6_I , 
+         RET_VAL                     := #P_RET_VAL.V[1] , 
+         BLK                         := #ANY_DB5_F
+      );
+      L #P_RET_VAL.V[1];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #IniData , 
+         RET_VAL                     := #P_RET_VAL.V[2] , 
+         BLK                         := #ANY_DB6_I
+      );
+      L #P_RET_VAL.V[2];
+      L 0;
+      <>I;
+      JC cDEE;
+      R #Status.Perm.Out_nDB[6];
+      R #Status.Perm.Insert_nDB[5];
+      A #Status.Mem.Full_nDB[6];
+      S #Status.Perm.Push_nDB[6];
+      R #Status.Mem.Full_nDB[6];
+      JU cDFF;
+cD51:      NOP 0;
+      A #Status.Perm.Out_nDB[5];
+      A #Status.Perm.Insert_nDB[4];
+      JCN cDFI;
+      L #P_RET_VAL.MEM;
+      T #P_RET_VAL.V[1];
+      T #P_RET_VAL.V[2];
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #ANY_DB5_I , 
+         RET_VAL                     := #P_RET_VAL.V[1] , 
+         BLK                         := #ANY_DB4_F
+      );
+      L #P_RET_VAL.V[1];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #IniData , 
+         RET_VAL                     := #P_RET_VAL.V[2] , 
+         BLK                         := #ANY_DB5_I
+      );
+      L #P_RET_VAL.V[2];
+      L 0;
+      <>I;
+      JC cDEE;
+      R #Status.Perm.Out_nDB[5];
+      R #Status.Perm.Insert_nDB[4];
+      A #Status.Mem.Full_nDB[5];
+      S #Status.Perm.Push_nDB[5];
+      R #Status.Mem.Full_nDB[5];
+      JU cDFF;
+cD41:      NOP 0;
+      A #Status.Perm.Out_nDB[4];
+      A #Status.Perm.Insert_nDB[3];
+      JCN cDFI;
+      L #P_RET_VAL.MEM;
+      T #P_RET_VAL.V[1];
+      T #P_RET_VAL.V[2];
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #ANY_DB4_I , 
+         RET_VAL                     := #P_RET_VAL.V[1] , 
+         BLK                         := #ANY_DB3_F
+      );
+      L #P_RET_VAL.V[1];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #IniData , 
+         RET_VAL                     := #P_RET_VAL.V[2] , 
+         BLK                         := #ANY_DB4_I
+      );
+      L #P_RET_VAL.V[2];
+      L 0;
+      <>I;
+      JC cDEE;
+      R #Status.Perm.Out_nDB[4];
+      R #Status.Perm.Insert_nDB[3];
+      A #Status.Mem.Full_nDB[4];
+      S #Status.Perm.Push_nDB[4];
+      R #Status.Mem.Full_nDB[4];
+      JU cDFF;
+cD31:      NOP 0;
+      A #Status.Perm.Out_nDB[3];
+      A #Status.Perm.Insert_nDB[2];
+      JCN cDFI;
+      L #P_RET_VAL.MEM;
+      T #P_RET_VAL.V[1];
+      T #P_RET_VAL.V[2];
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #ANY_DB3_I , 
+         RET_VAL                     := #P_RET_VAL.V[1] , 
+         BLK                         := #ANY_DB2_F
+      );
+      L #P_RET_VAL.V[1];
+      L 0;
+      <>I;
+      JC cDEE;
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #IniData , 
+         RET_VAL                     := #P_RET_VAL.V[2] , 
+         BLK                         := #ANY_DB3_I
+      );
+      L #P_RET_VAL.V[2];
+      L 0;
+      <>I;
+      JC cDEE;
+      R #Status.Perm.Out_nDB[3];
+      R #Status.Perm.Insert_nDB[2];
+      A #Status.Mem.Full_nDB[3];
+      S #Status.Perm.Push_nDB[3];
+      R #Status.Mem.Full_nDB[3];
+      JU cDFF;
+cD21:      NOP 0;
+      A #Status.Perm.Out_nDB[2];
+      A #Status.Perm.Insert_nDB[1];
+      JCN cDFI;
+      L #P_RET_VAL.MEM;
+      T #P_RET_VAL.V[1];
+      T #P_RET_VAL.V[2];
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #ANY_DB2_I , 
+         RET_VAL                     := #P_RET_VAL.V[1] , 
+         BLK                         := #ANY_DB1_F
+      );
+      L #P_RET_VAL.V[1];
+      L 0;
+      <>I;
+      JC cDEE;
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #IniData , 
+         RET_VAL                     := #P_RET_VAL.V[2] , 
+         BLK                         := #ANY_DB2_I
+      );
+      L #P_RET_VAL.V[2];
+      L 0;
+      <>I;
+      JC cDEE;
+      R #Status.Perm.Out_nDB[2];
+      R #Status.Perm.Insert_nDB[1];
+      A #Status.Mem.Full_nDB[2];
+      S #Status.Perm.Push_nDB[2];
+      R #Status.Mem.Full_nDB[2];
+      JU cDFF;
+cDEE:      NOP 0;
+      SET;
+      S #FAULT;
+      JU END;
+cDFI:      NOP 0;
+      L #COUNT.cD00;
+      + 1;
+      T #COUNT.cD00;
+      JU cD00;
+      JU cDFF;
+cDFF:      NOP 0;
+      JU cE00;
+cE00:      NOP 0;
+      A #Status.Mem.Full_nDB[1];
+      = #FULL;
+      JCN cEFF;
+      L #QuantityDB;
+      L 1;
+      >I;
+      JCN cEFF;
+      A #Status.Mem.Full_nDB[2];
+      = #FULL;
+      JCN cEFF;
+      L #QuantityDB;
+      L 2;
+      >I;
+      JCN cEFF;
+      A #Status.Mem.Full_nDB[3];
+      = #FULL;
+      JCN cEFF;
+      L #QuantityDB;
+      L 3;
+      >I;
+      JCN cEFF;
+      A #Status.Mem.Full_nDB[4];
+      = #FULL;
+      L #QuantityDB;
+      L 4;
+      >I;
+      JCN cEFF;
+      A #Status.Mem.Full_nDB[5];
+      = #FULL;
+      L #QuantityDB;
+      L 5;
+      >I;
+      JCN cEFF;
+      A #Status.Mem.Full_nDB[6];
+      = #FULL;
+      JU cEFF;
+cEFF:      NOP 0;
+NETWORK
+TITLE = cF..Data Empty auto
+      JU cF00;
+cF00:      NOP 0;
+      L #Network_7;
+      T #P_RET_VAL.MEM;
+      AN #PerEmptyAuto;
+      ON #FULL;
+      JC cFFF;
+      LAR1 P##ANY_DB1_I;
+      L LD[ AR1, P#0.0];
+      T #AUX.LD_01;
+      L LW[ AR1, P#4.0];
+      T #AUX.LW_01;
+      T #PAUXnDB;
+      L LD[ AR1, P#6.0];
+      T #AUX.LD_02;
+      LAR1 P##ANY_DB1_B;
+      L #AUX.LD_01;
+      T LD[ AR1, P#0.0];
+      L #AUX.LW_01;
+      T LW[ AR1, P#4.0];
+      L #AUX.LD_02;
+      T LD[ AR1, P#6.0];
+      OPN DB[ #PAUXnDB];
+      L DBLG;
+      L #LENGTH.Data;
+      /D;
+      L 3;
+      /D;
+      L 1;
+cF01:      NOP 0;
+      T #COUNT.cF00;
+      L #P_RET_VAL.MEM;
+      T #P_RET_VAL.V[1];
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #IniData , 
+         RET_VAL                     := #P_RET_VAL.V[1] , 
+         BLK                         := #ANY_DB1_B
+      );
+      LAR1 P##ANY_DB1_B;
+      L #LENGTH.PointerData;
+      L LD[ AR1, P#6.0];
+      +D;
+      T LD[ AR1, P#6.0];
+      L #COUNT.cF00;
+      LOOP cF01;
+      L #P_RET_VAL.V[1];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      R #Status.Perm.Insert_nDB[1];
+      A #Status.Mem.Full_nDB[1];
+      S #Status.Perm.Push_nDB[1];
+      R #Status.Mem.Full_nDB[1];
+      JU cFFF;
+cFFF:      NOP 0;
+NETWORK
+TITLE = dA..Data Select
+      L #Network_8;
+      T #P_RET_VAL.MEM;
+      A(;
+      L #COUNT.dA00;
+      L 0;
+      <>I;
+      );
+      A(;
+      L #COUNT.dA00;
+      L #QuantityDB;
+      <=I;
+      );
+      JC dA00;
+      L 1;
+      T #COUNT.dA00;
+      JU dA00;
+dA00:      NOP 0;
+      L #COUNT.dA00;
+      JL dAXX;
+      JU dAXX;
+      JU dA11;//db[1]
+      JU dA21;//db[2]
+      JU dA31;//db[3]
+      JU dA41;//db[4]
+      JU dA51;//db[5]
+      JU dA61;//db[6]
+dAXX:      JU dZFF;//end
+dA11:      NOP 0;
+      L #COUNT.dA00;
+      T #Status.Mem.SelctBBDDNum;
+      SET;
+      R #AUX.FullDatabase;
+      A #Status.Perm.Push_nDB[1];
+      AN #Status.Mem.Full_nDB[1];
+      = #AUX.PushDatabase;
+      JCN dA12;
+      L #P_RET_VAL.MEM;
+      T #P_RET_VAL.V[1];
+      T #P_RET_VAL.V[2];
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #ANY_DB1_FE , 
+         RET_VAL                     := #P_RET_VAL.V[1] , 
+         BLK                         := #ANY_DB1_IE
+      );
+      L #P_RET_VAL.V[1];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #IniData , 
+         RET_VAL                     := #P_RET_VAL.V[2] , 
+         BLK                         := #ANY_DB1_F
+      );
+      L #P_RET_VAL.V[2];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      R #Status.Perm.Push_nDB[1];
+      JU dWFF;
+dA12:      NOP 0;
+      OPN DB[ #LIST_DB_T.DbNumber[1]];
+      LAR1 P##ANY_DB1_I;
+      L LD[ AR1, P#0.0];
+      T #AUX.LD_01;
+      L LW[ AR1, P#4.0];
+      T #AUX.LW_01;
+      L LD[ AR1, P#6.0];
+      T #AUX.LD_02;
+      LAR1 P##ANY_DB_SELECT_I;//SEL
+      L #AUX.LD_01;
+      T LD[ AR1, P#0.0];
+      L #AUX.LW_01;
+      T LW[ AR1, P#4.0];
+      L #AUX.LD_02;
+      T LD[ AR1, P#6.0];
+      T #P_ADR.I;
+      LAR1 P##ANY_DB1_F;
+      L LD[ AR1, P#0.0];
+      T #AUX.LD_01;
+      L LW[ AR1, P#4.0];
+      T #AUX.LW_01;
+      L LD[ AR1, P#6.0];
+      T #AUX.LD_02;
+      LAR1 P##ANY_DB_SELECT_F;//SEL
+      L #AUX.LD_01;
+      T LD[ AR1, P#0.0];
+      L #AUX.LW_01;
+      T LW[ AR1, P#4.0];
+      L #AUX.LD_02;
+      T LD[ AR1, P#6.0];
+      T #P_ADR.F;
+      JU dAFF;
+dA21:      NOP 0;
+      L #COUNT.dA00;
+      T #Status.Mem.SelctBBDDNum;
+      SET;
+      R #AUX.FullDatabase;
+      A #Status.Perm.Push_nDB[2];
+      AN #Status.Mem.Full_nDB[2];
+      = #AUX.PushDatabase;
+      JCN dA22;
+      L #P_RET_VAL.MEM;
+      T #P_RET_VAL.V[1];
+      T #P_RET_VAL.V[2];
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #ANY_DB2_FE , 
+         RET_VAL                     := #P_RET_VAL.V[1] , 
+         BLK                         := #ANY_DB2_IE
+      );
+      L #P_RET_VAL.V[1];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #IniData , 
+         RET_VAL                     := #P_RET_VAL.V[2] , 
+         BLK                         := #ANY_DB2_F
+      );
+      L #P_RET_VAL.V[2];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      R #Status.Perm.Push_nDB[2];
+      JU dWFF;
+dA22:      NOP 0;
+      OPN DB[ #LIST_DB_T.DbNumber[2]];
+      LAR1 P##ANY_DB2_I;
+      L LD[ AR1, P#0.0];
+      T #AUX.LD_01;
+      L LW[ AR1, P#4.0];
+      T #AUX.LW_01;
+      L LD[ AR1, P#6.0];
+      T #AUX.LD_02;
+      LAR1 P##ANY_DB_SELECT_I;//SEL
+      L #AUX.LD_01;
+      T LD[ AR1, P#0.0];
+      L #AUX.LW_01;
+      T LW[ AR1, P#4.0];
+      L #AUX.LD_02;
+      T LD[ AR1, P#6.0];
+      T #P_ADR.I;
+      LAR1 P##ANY_DB2_F;
+      L LD[ AR1, P#0.0];
+      T #AUX.LD_01;
+      L LW[ AR1, P#4.0];
+      T #AUX.LW_01;
+      L LD[ AR1, P#6.0];
+      T #AUX.LD_02;
+      LAR1 P##ANY_DB_SELECT_F;//SELECT
+      L #AUX.LD_01;
+      T LD[ AR1, P#0.0];
+      L #AUX.LW_01;
+      T LW[ AR1, P#4.0];
+      L #AUX.LD_02;
+      T LD[ AR1, P#6.0];
+      T #P_ADR.F;
+      JU dAFF;
+dA31:      NOP 0;
+      L #COUNT.dA00;
+      T #Status.Mem.SelctBBDDNum;
+      SET;
+      R #AUX.FullDatabase;
+      A #Status.Perm.Push_nDB[3];
+      AN #Status.Mem.Full_nDB[3];
+      = #AUX.PushDatabase;
+      JCN dA32;
+      L #P_RET_VAL.MEM;
+      T #P_RET_VAL.V[1];
+      T #P_RET_VAL.V[2];
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #ANY_DB3_FE , 
+         RET_VAL                     := #P_RET_VAL.V[1] , 
+         BLK                         := #ANY_DB3_IE
+      );
+      L #P_RET_VAL.V[1];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #IniData , 
+         RET_VAL                     := #P_RET_VAL.V[2] , 
+         BLK                         := #ANY_DB3_F
+      );
+      L #P_RET_VAL.V[2];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      R #Status.Perm.Push_nDB[3];
+      JU dWFF;
+dA32:      NOP 0;
+      OPN DB[ #LIST_DB_T.DbNumber[3]];
+      LAR1 P##ANY_DB3_I;
+      L LD[ AR1, P#0.0];
+      T #AUX.LD_01;
+      L LW[ AR1, P#4.0];
+      T #AUX.LW_01;
+      L LD[ AR1, P#6.0];
+      T #AUX.LD_02;
+      LAR1 P##ANY_DB_SELECT_I;//SEL
+      L #AUX.LD_01;
+      T LD[ AR1, P#0.0];
+      L #AUX.LW_01;
+      T LW[ AR1, P#4.0];
+      L #AUX.LD_02;
+      T LD[ AR1, P#6.0];
+      T #P_ADR.I;
+      LAR1 P##ANY_DB3_F;
+      L LD[ AR1, P#0.0];
+      T #AUX.LD_01;
+      L LW[ AR1, P#4.0];
+      T #AUX.LW_01;
+      L LD[ AR1, P#6.0];
+      T #AUX.LD_02;
+      LAR1 P##ANY_DB_SELECT_F;//SEL
+      L #AUX.LD_01;
+      T LD[ AR1, P#0.0];
+      L #AUX.LW_01;
+      T LW[ AR1, P#4.0];
+      L #AUX.LD_02;
+      T LD[ AR1, P#6.0];
+      T #P_ADR.F;
+      JU dAFF;
+dA41:      NOP 0;
+      L #COUNT.dA00;
+      T #Status.Mem.SelctBBDDNum;
+      SET;
+      R #AUX.FullDatabase;
+      A #Status.Perm.Push_nDB[4];
+      AN #Status.Mem.Full_nDB[4];
+      = #AUX.PushDatabase;
+      JCN dA42;
+      L #P_RET_VAL.MEM;
+      T #P_RET_VAL.V[1];
+      T #P_RET_VAL.V[2];
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #ANY_DB4_FE , 
+         RET_VAL                     := #P_RET_VAL.V[1] , 
+         BLK                         := #ANY_DB4_IE
+      );
+      L #P_RET_VAL.V[1];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #IniData , 
+         RET_VAL                     := #P_RET_VAL.V[2] , 
+         BLK                         := #ANY_DB4_F
+      );
+      L #P_RET_VAL.V[2];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      R #Status.Perm.Push_nDB[4];
+      JU dWFF;
+dA42:      NOP 0;
+      OPN DB[ #LIST_DB_T.DbNumber[4]];
+      LAR1 P##ANY_DB4_I;
+      L LD[ AR1, P#0.0];
+      T #AUX.LD_01;
+      L LW[ AR1, P#4.0];
+      T #AUX.LW_01;
+      L LD[ AR1, P#6.0];
+      T #AUX.LD_02;
+      LAR1 P##ANY_DB_SELECT_I;//SEL
+      L #AUX.LD_01;
+      T LD[ AR1, P#0.0];
+      L #AUX.LW_01;
+      T LW[ AR1, P#4.0];
+      L #AUX.LD_02;
+      T LD[ AR1, P#6.0];
+      T #P_ADR.I;
+      LAR1 P##ANY_DB4_F;
+      L LD[ AR1, P#0.0];
+      T #AUX.LD_01;
+      L LW[ AR1, P#4.0];
+      T #AUX.LW_01;
+      L LD[ AR1, P#6.0];
+      T #AUX.LD_02;
+      LAR1 P##ANY_DB_SELECT_F;//SEL
+      L #AUX.LD_01;
+      T LD[ AR1, P#0.0];
+      L #AUX.LW_01;
+      T LW[ AR1, P#4.0];
+      L #AUX.LD_02;
+      T LD[ AR1, P#6.0];
+      T #P_ADR.F;
+      JU dAFF;
+dA51:      NOP 0;
+      L #COUNT.dA00;
+      T #Status.Mem.SelctBBDDNum;
+      SET;
+      R #AUX.FullDatabase;
+      A #Status.Perm.Push_nDB[5];
+      AN #Status.Mem.Full_nDB[5];
+      = #AUX.PushDatabase;
+      JCN dA52;
+      L #P_RET_VAL.MEM;
+      T #P_RET_VAL.V[1];
+      T #P_RET_VAL.V[2];
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #ANY_DB5_FE , 
+         RET_VAL                     := #P_RET_VAL.V[1] , 
+         BLK                         := #ANY_DB5_IE
+      );
+      L #P_RET_VAL.V[1];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #IniData , 
+         RET_VAL                     := #P_RET_VAL.V[2] , 
+         BLK                         := #ANY_DB5_F
+      );
+      L #P_RET_VAL.V[2];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      R #Status.Perm.Push_nDB[5];
+      JU dWFF;
+dA52:      NOP 0;
+      OPN DB[ #LIST_DB_T.DbNumber[5]];
+      LAR1 P##ANY_DB5_I;
+      L LD[ AR1, P#0.0];
+      T #AUX.LD_01;
+      L LW[ AR1, P#4.0];
+      T #AUX.LW_01;
+      L LD[ AR1, P#6.0];
+      T #AUX.LD_02;
+      LAR1 P##ANY_DB_SELECT_I;//SEL
+      L #AUX.LD_01;
+      T LD[ AR1, P#0.0];
+      L #AUX.LW_01;
+      T LW[ AR1, P#4.0];
+      L #AUX.LD_02;
+      T LD[ AR1, P#6.0];
+      T #P_ADR.I;
+      LAR1 P##ANY_DB5_F;
+      L LD[ AR1, P#0.0];
+      T #AUX.LD_01;
+      L LW[ AR1, P#4.0];
+      T #AUX.LW_01;
+      L LD[ AR1, P#6.0];
+      T #AUX.LD_02;
+      LAR1 P##ANY_DB_SELECT_F;//SEL
+      L #AUX.LD_01;
+      T LD[ AR1, P#0.0];
+      L #AUX.LW_01;
+      T LW[ AR1, P#4.0];
+      L #AUX.LD_02;
+      T LD[ AR1, P#6.0];
+      T #P_ADR.F;
+      JU dAFF;
+dA61:      NOP 0;
+      L #COUNT.dA00;
+      T #Status.Mem.SelctBBDDNum;
+      SET;
+      R #AUX.FullDatabase;
+      A #Status.Perm.Push_nDB[6];
+      AN #Status.Mem.Full_nDB[6];
+      = #AUX.PushDatabase;
+      JCN dA62;
+      L #P_RET_VAL.MEM;
+      T #P_RET_VAL.V[1];
+      T #P_RET_VAL.V[2];
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #ANY_DB6_FE , 
+         RET_VAL                     := #P_RET_VAL.V[1] , 
+         BLK                         := #ANY_DB6_IE
+      );
+      L #P_RET_VAL.V[1];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #IniData , 
+         RET_VAL                     := #P_RET_VAL.V[2] , 
+         BLK                         := #ANY_DB6_F
+      );
+      L #P_RET_VAL.V[2];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      R #Status.Perm.Push_nDB[6];
+      JU dWFF;
+dA62:      NOP 0;
+      OPN DB[ #LIST_DB_T.DbNumber[6]];
+      LAR1 P##ANY_DB6_I;
+      L LD[ AR1, P#0.0];
+      T #AUX.LD_01;
+      L LW[ AR1, P#4.0];
+      T #AUX.LW_01;
+      L LD[ AR1, P#6.0];
+      T #AUX.LD_02;
+      LAR1 P##ANY_DB_SELECT_I;//SEL
+      L #AUX.LD_01;
+      T LD[ AR1, P#0.0];
+      L #AUX.LW_01;
+      T LW[ AR1, P#4.0];
+      L #AUX.LD_02;
+      T LD[ AR1, P#6.0];
+      T #P_ADR.I;
+      LAR1 P##ANY_DB6_F;
+      L LD[ AR1, P#0.0];
+      T #AUX.LD_01;
+      L LW[ AR1, P#4.0];
+      T #AUX.LW_01;
+      L LD[ AR1, P#6.0];
+      T #AUX.LD_02;
+      LAR1 P##ANY_DB_SELECT_F;//SEL
+      L #AUX.LD_01;
+      T LD[ AR1, P#0.0];
+      L #AUX.LW_01;
+      T LW[ AR1, P#4.0];
+      L #AUX.LD_02;
+      T LD[ AR1, P#6.0];
+      T #P_ADR.F;
+      JU dAFF;
+dAFF:      NOP 0;
+NETWORK
+TITLE = dC..Data Search empty space
+      LAR1 #P_ADR.I;
+      JU dC00;
+dC00:      NOP 0;
+      L #Network_9;
+      T #P_RET_VAL.MEM;
+      TAR1;
+      T #SAVE_AR1.dC00;
+      L 1;
+dC01:      NOP 0;
+      T #COUNT.dC00;
+      L DBB[ AR1, P#0.0];
+      L ' ';
+      <>I;
+      = #AUX.DifferentValue;
+      AN #AUX.DifferentValue;
+      JC dCFF;
+      L #P_ADR.F;
+      L #SAVE_AR1.dC00;
+      <=D;
+      = #AUX.FullDatabase;
+      A #AUX.FullDatabase;
+      JC dCWF;
+      L P#1.0;
+      +AR1;
+      L #COUNT.dC00;
+      LOOP dC01;
+      L #SAVE_AR1.dC00;
+      LAR1;
+      L #LENGTH.PointerData;
+      +AR1;
+      JU dC00;
+NETWORK
+TITLE = dC..Data Full
+      JU dCWF;
+dCWF:      NOP 0;
+      L #Network_10;
+      T #P_RET_VAL.MEM;
+      AN #AUX.FullDatabase;
+      JC dCWW;
+      L #Status.Mem.SelctBBDDNum;
+      JL dCXX;
+      JU dCEE;//fault
+      JU dC11;//db[1]
+      JU dC12;//db[2]
+      JU dC13;//db[3]
+      JU dC14;//db[4]
+      JU dC15;//db[5]
+      JU dC16;//db[6]
+dCXX:      JU dCEE;//fault
+dC11:      NOP 0;
+      A #AUX.FullDatabase;
+      = #Status.Mem.Full_nDB[1];
+      JU dCWW;
+dC12:      NOP 0;
+      A #AUX.FullDatabase;
+      = #Status.Mem.Full_nDB[2];
+      JU dCWW;
+dC13:      NOP 0;
+      A #AUX.FullDatabase;
+      = #Status.Mem.Full_nDB[3];
+      JU dCWW;
+dC14:      NOP 0;
+      A #AUX.FullDatabase;
+      = #Status.Mem.Full_nDB[4];
+      JU dCWW;
+dC15:      NOP 0;
+      A #AUX.FullDatabase;
+      = #Status.Mem.Full_nDB[5];
+      JU dCWW;
+dC16:      NOP 0;
+      A #AUX.FullDatabase;
+      = #Status.Mem.Full_nDB[6];
+      JU dCWW;
+dCEE:      NOP 0;
+      SET;
+      S #FAULT;
+      JU END;
+dCWW:      NOP 0;
+      JU dWFF;
+      JU dCFF;
+dCFF:      NOP 0;
+NETWORK
+TITLE = dD..Data Find space
+      JU dD00;
+dD00:      NOP 0;
+      L #Network_11;
+      T #P_RET_VAL.MEM;
+      L #SAVE_AR1.dC00;
+      LAR1;
+      L #LENGTH.PointerData;
+      +AR1;
+      L #P_ADR.F;
+      TAR1;
+      <D;
+      JC dWFF;
+      JU dDFF;
+dDFF:      NOP 0;
+NETWORK
+TITLE = dE..Data Find data
+      JU dE00;
+dE00:      NOP 0;
+      L #Network_12;
+      T #P_RET_VAL.MEM;
+      TAR1;
+      T #SAVE_AR1.dE00;
+      L 1;
+dE01:      NOP 0;
+      T #COUNT.dE00;
+      L DBB[ AR1, P#0.0];
+      L ' ';
+      ==I;
+      = #AUX.EmptyData;
+      AN #AUX.EmptyData;
+      JC dEFF;
+      L #P_ADR.F;
+      L #SAVE_AR1.dE00;
+      <=D;
+      JC dWFF;
+      L P#1.0;
+      +AR1;
+      L #COUNT.dE00;
+      LOOP dE01;
+      L #SAVE_AR1.dE00;
+      LAR1;
+      L #LENGTH.PointerData;
+      +AR1;
+      JU dE00;
+      JU dEFF;
+dEFF:      NOP 0;
+NETWORK
+TITLE = dF..Data Move data
+      JU dF01;
+dF01:      NOP 0;
+      L #Network_13;
+      T #P_RET_VAL.MEM;
+      L #SAVE_AR1.dE00;
+      T #P_ADR.F;
+      LAR1 P##ANY_DB_SELECT_F;
+      T LD[ AR1, P#6.0];
+      L #SAVE_AR1.dC00;
+      T #P_ADR.I;
+      LAR1 P##ANY_DB_SELECT_I;
+      T LD[ AR1, P#6.0];
+      LAR1;
+      L #P_RET_VAL.MEM;
+      T #P_RET_VAL.V[1];
+      T #P_RET_VAL.V[2];
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #ANY_DB_SELECT_F , 
+         RET_VAL                     := #P_RET_VAL.V[1] , 
+         BLK                         := #ANY_DB_SELECT_I
+      );
+      L #P_RET_VAL.V[1];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #IniData , 
+         RET_VAL                     := #P_RET_VAL.V[2] , 
+         BLK                         := #ANY_DB_SELECT_F
+      );
+      L #P_RET_VAL.V[2];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      JU dZFF;
+dWFF:      NOP 0;
+      L #COUNT.dA00;
+      + 1;
+      T #COUNT.dA00;
+      L #QuantityDB;
+      >I;
+      JC dZFF;
+      JU dA00;
+//--->END
+      JU dZFF;
+dZFF:      NOP 0;
+NETWORK
+TITLE = fA..Query
+      JU fA0X;
+fA0X:      NOP 0;
+      L #Network_14;
+      T #P_RET_VAL.MEM;
+      AN #Request.Query.Request;
+      R #Response.Query.DataAvailable;
+      R #Response.Query.DataNotAvailable;
+      NOT;
+      FP #FP_REQUEST.QueryDB;
+      JC fA0Y;
+      JU fBFF;
+fA0Y:      NOP 0;
+      L #P_RET_VAL.MEM;
+      T #P_RET_VAL.V[1];
+      T #P_RET_VAL.V[2];
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #Request.Query.BarcodeDig , 
+         RET_VAL                     := #P_RET_VAL.V[1] , 
+         BLK                         := #DigitFilter
+      );
+      L #P_RET_VAL.V[1];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      JU jA00               ;//Goto Data input filters
+fAR2:      NOP 0                    ;//Return Data input filters
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #DigitFilter , 
+         RET_VAL                     := #P_RET_VAL.V[2] , 
+         BLK                         := #QueryData
+      );
+      L #P_RET_VAL.V[2];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #IniData , 
+         RET_VAL                     := #P_RET_VAL.V[3] , 
+         BLK                         := #Response.QueryDataAvailable
+      );
+      L #P_RET_VAL.V[3];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      AN #DataInputOK;
+      JC fB50               ;//Error data input
+      L 1;
+      T #COUNT.fA00;
+fA00:      NOP 0;
+      L #COUNT.fA00;
+      JL fAXX;
+      JU fAXX;
+      JU fA11;//db[1]
+      JU fA21;//db[2]
+      JU fA31;//db[3]
+      JU fA41;//db[4]
+      JU fA51;//db[5]
+      JU fA61;//db[6]
+      JU fB40;//end
+fAXX:      JU fAEE;//fault
+fA11:      NOP 0;
+      OPN DB[ #LIST_DB_T.DbNumber[1]];
+      LAR1 #P_ADR.I_DB[1];
+      L #NumDataArrayDB[1];
+      JU fA10;
+fA21:      NOP 0;
+      OPN DB[ #LIST_DB_T.DbNumber[2]];
+      LAR1 #P_ADR.I_DB[2];
+      L #NumDataArrayDB[2];
+      JU fA10;
+fA31:      NOP 0;
+      OPN DB[ #LIST_DB_T.DbNumber[3]];
+      LAR1 #P_ADR.I_DB[3];
+      L #NumDataArrayDB[3];
+      JU fA10;
+fA41:      NOP 0;
+      OPN DB[ #LIST_DB_T.DbNumber[4]];
+      LAR1 #P_ADR.I_DB[4];
+      L #NumDataArrayDB[4];
+      JU fA10;
+fA51:      NOP 0;
+      OPN DB[ #LIST_DB_T.DbNumber[5]];
+      LAR1 #P_ADR.I_DB[5];
+      L #NumDataArrayDB[5];
+      JU fA10;
+fA61:      NOP 0;
+      OPN DB[ #LIST_DB_T.DbNumber[6]];
+      LAR1 #P_ADR.I_DB[6];
+      L #NumDataArrayDB[6];
+      JU fA10;
+fA10:      NOP 0;
+      T #COUNT.fA01;
+      TAR1;
+      T #SAVE_AR1.fA10;
+      SET;
+//-------------------------------
+      TAR1;
+      T #P_ADR.SAVE_COMP_01;
+      T #P_ADR.COMP_01;
+      L P##QueryData;
+      T #P_ADR.COMP_02;
+      SET;
+      R #AUX.DifferentValue;
+      L #LENGTH.Code;
+fMP0:      NOP 0;
+      T #COUNT.fA02;
+      LAR1 #P_ADR.COMP_01;
+      L DBB[ AR1, P#0.0];
+      LAR1 #P_ADR.COMP_02;
+      L DIB[ AR1, P#0.0];
+      <>I;
+      S #AUX.DifferentValue;
+      L P#1.0;
+      L #P_ADR.COMP_01;
+      +D;
+      T #P_ADR.COMP_01;
+      L P#1.0;
+      L #P_ADR.COMP_02;
+      +D;
+      T #P_ADR.COMP_02;
+      L #COUNT.fA02;
+      LOOP fMP0;
+      LAR1 #P_ADR.SAVE_COMP_01;
+//-------------------------------
+      AN #AUX.DifferentValue;
+      JC fB20;
+      L #LENGTH.PointerData;
+      +AR1;
+      L #COUNT.fA01;
+      LOOP fA10;
+      JU fWFF;
+fWFF:      NOP 0;
+      L #COUNT.fA00;
+      + 1;
+      T #COUNT.fA00;
+      L #QuantityDB;
+      >I;
+      JC fB40;
+      JU fA00;
+fAEE:      NOP 0;
+      SET;
+      S #FAULT;
+      JU END;
+      JU fAFF;
+fAFF:      NOP 0;
+      JU END;
+fB20:      NOP 0;
+      L #COUNT.fA00;
+      JL fB3X;
+      JU fB3X;
+      JU fB31;//db[1]
+      JU fB32;//db[2]
+      JU fB33;//db[3]
+      JU fB34;//db[4]
+      JU fB35;//db[5]
+      JU fB36;//db[6]
+fB3X:      JU fB3E;//fault
+fB31:      NOP 0;
+      LAR1 P##ANY_DB1_I;
+      JU fB3F;
+fB32:      NOP 0;
+      LAR1 P##ANY_DB2_I;
+      JU fB3F;
+fB33:      NOP 0;
+      LAR1 P##ANY_DB3_I;
+      JU fB3F;
+fB34:      NOP 0;
+      LAR1 P##ANY_DB4_I;
+      JU fB3F;
+fB35:      NOP 0;
+      LAR1 P##ANY_DB5_I;
+      JU fB3F;
+fB36:      NOP 0;
+      LAR1 P##ANY_DB6_I;
+      JU fB3F;
+fB3E:      NOP 0;
+      SET;
+      S #FAULT;
+      JU END;
+      JU fB3F;
+fB3F:      NOP 0;
+      L LD[ AR1, P#0.0];
+      T #AUX.LD_01;
+      L LW[ AR1, P#4.0];
+      T #AUX.LW_01;
+      T #PAUXnDB;
+      LAR1 P##ANY_DB_QUERY;
+      L #AUX.LD_01;
+      T LD[ AR1, P#0.0];
+      L #AUX.LW_01;
+      T LW[ AR1, P#4.0];
+      L #SAVE_AR1.fA10;
+      T LD[ AR1, P#6.0];
+      L #P_RET_VAL.MEM;
+      T #P_RET_VAL.V[1];
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #ANY_DB_QUERY , 
+         RET_VAL                     := #P_RET_VAL.V[1] , 
+         BLK                         := #Response.QueryDataAvailable
+      );
+      L #P_RET_VAL.V[1];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      S #Response.Query.DataAvailable;
+      R #Response.Query.DataNotAvailable;
+      L #LogDataAvailable;
+      T #Log.Request;
+      JU fB50;
+fB40:      NOP 0;
+      SET;
+      R #Response.Query.DataAvailable;
+      S #Response.Query.DataNotAvailable;
+      L #LogDataNotAvailable;
+      T #Log.Request;
+fB50:      NOP 0;
+      A #DataInputOK;
+      JC fB51               ;//Error data input
+      L #LogDataInputNOK;
+      T #Log.Request;
+fB51:      NOP 0;
+      L #P_RET_VAL.MEM;
+      T #P_RET_VAL.V[1];
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #QueryData , 
+         RET_VAL                     := #P_RET_VAL.V[1] , 
+         BLK                         := #Response.Query.BarcodeDig
+      );
+      L #P_RET_VAL.V[1];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #QueryData , 
+         RET_VAL                     := #P_RET_VAL.V[2] , 
+         BLK                         := #Log.DatabaseTable
+      );
+      L #P_RET_VAL.V[2];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #DateTime , 
+         RET_VAL                     := #P_RET_VAL.V[3] , 
+         BLK                         := #Log.DatabaseTable.DateTime
+      );
+      L #P_RET_VAL.V[3];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      JU fBFF;
+fBFF:      NOP 0;
+NETWORK
+TITLE = gA..Insert
+      JU gA00;
+gA00:      NOP 0;
+      L #Network_15;
+      T #P_RET_VAL.MEM;
+      SET;
+      R #AUX.StatusPermInsert_nDB;
+      AN #Request.Insert.Request;
+      R #Response.Insert.Completed;
+      L #QuantityDB;
+      T #COUNT.gA00;
+      NOP 0;
+      SET;
+      L #COUNT.gA00;
+      JL gAXX;
+      JU gAXX;
+      JU gA11;//db[1]
+      JU gA21               ;//db[2]
+      JU gA31               ;//db[3]
+      JU gA41               ;//db[4]
+      JU gA51               ;//db[5]
+      JU gA61               ;//db[6]
+gAXX:      JU gAEE;//fault
+gA11:      NOP 0;
+      A #Status.Perm.Insert_nDB[1];
+      JU gA01;
+gA21:      NOP 0;
+      A #Status.Perm.Insert_nDB[2];
+      JU gA01;
+gA31:      NOP 0;
+      A #Status.Perm.Insert_nDB[3];
+      JU gA01;
+gA41:      NOP 0;
+      A #Status.Perm.Insert_nDB[4];
+      JU gA01;
+gA51:      NOP 0;
+      A #Status.Perm.Insert_nDB[5];
+      JU gA01;
+gA61:      NOP 0;
+      A #Status.Perm.Insert_nDB[6];
+      JU gA01;
+gAEE:      NOP 0;
+      SET;
+      S #FAULT;
+      JU END;
+gA01:      NOP 0;
+      = #AUX.StatusPermInsert_nDB;
+      = #Status.Perm.Insert;
+      A #FULL              ;//Data base full
+      JC gA02;
+      A #Request.Query.Request;
+      JC gAFF;
+      A #AUX.StatusPermInsert_nDB;
+gA02:      NOP 0;
+      A #Request.Insert.Request;
+      FP #FP_REQUEST.InsertDB;
+      JC gA03;
+      JU gAFF;
+gA03:      NOP 0;
+      L #P_RET_VAL.MEM;
+      T #P_RET_VAL.V[1];
+      T #P_RET_VAL.V[2];
+      T #P_RET_VAL.V[3];
+      T #P_RET_VAL.V[4];
+      T #P_RET_VAL.V[5];
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #Request.Insert.BarcodeData , 
+         RET_VAL                     := #P_RET_VAL.V[1] , 
+         BLK                         := #DigitFilter
+      );
+      L #P_RET_VAL.V[1];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      JU jA00               ;//Goto Data input filters
+gAR2:      NOP 0                    ;//Return Data input filters
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #DigitFilter , 
+         RET_VAL                     := #P_RET_VAL.V[2] , 
+         BLK                         := #InsertData.BarcodeData
+      );
+      L #P_RET_VAL.V[2];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #DateTime , 
+         RET_VAL                     := #P_RET_VAL.V[3] , 
+         BLK                         := #InsertData.DateTime
+      );
+      L #P_RET_VAL.V[3];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      AN #DataInputOK;
+      S #DATA_ERROR;
+      JC gA05               ;//Error data input
+      A #FULL;
+      S #DATA_ERROR;
+      JC gA06               ;//Data base full
+      L #COUNT.gA00;
+      JL gBXX;
+      JU gBXX;
+      JU gB11;//db[1]
+      JU gB21;//db[2]
+      JU gB31;//db[3]
+      JU gB41;//db[4]
+      JU gB51;//db[5]
+      JU gB61;//db[6]
+gBXX:      JU gBEE;//fault
+gB11:      NOP 0;
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #InsertData , 
+         RET_VAL                     := #P_RET_VAL.V[3] , 
+         BLK                         := #ANY_DB1_F
+      );
+      L #P_RET_VAL.V[3];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      JU gA04;
+gB21:      NOP 0;
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #InsertData , 
+         RET_VAL                     := #P_RET_VAL.V[3] , 
+         BLK                         := #ANY_DB2_F
+      );
+      L #P_RET_VAL.V[3];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      JU gA04;
+gB31:      NOP 0;
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #InsertData , 
+         RET_VAL                     := #P_RET_VAL.V[3] , 
+         BLK                         := #ANY_DB3_F
+      );
+      L #P_RET_VAL.V[3];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      JU gA04;
+gB41:      NOP 0;
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #InsertData , 
+         RET_VAL                     := #P_RET_VAL.V[3] , 
+         BLK                         := #ANY_DB4_F
+      );
+      L #P_RET_VAL.V[3];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      JU gA04;
+gB51:      NOP 0;
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #InsertData , 
+         RET_VAL                     := #P_RET_VAL.V[3] , 
+         BLK                         := #ANY_DB5_F
+      );
+      L #P_RET_VAL.V[3];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      JU gA04;
+gB61:      NOP 0;
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #InsertData , 
+         RET_VAL                     := #P_RET_VAL.V[3] , 
+         BLK                         := #ANY_DB6_F
+      );
+      L #P_RET_VAL.V[3];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      JU gA04;
+gBEE:      NOP 0;
+      SET;
+      S #FAULT;
+      JU END;
+gA04:      NOP 0;
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #InsertData , 
+         RET_VAL                     := #P_RET_VAL.V[4] , 
+         BLK                         := #Response.InsertData
+      );
+      L #P_RET_VAL.V[4];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      S #Response.Insert.Completed;
+      L #LogInsert;
+      T #Log.Request;
+      A #DataInputOK;
+      JC gA07;
+gA05:      NOP 0;
+      L #LogDataInputNOK   ;//Data input NOK
+      T #Log.Request;
+      SET;
+      JU gA07;
+gA06:      NOP 0;
+      L #LogFullData       ;//Data base full
+      T #Log.Request;
+      SET;
+      JU gA07;
+gA07:      NOP 0;
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #InsertData , 
+         RET_VAL                     := #P_RET_VAL.V[5] , 
+         BLK                         := #Log.DatabaseTable
+      );
+      L #P_RET_VAL.V[5];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      JU gAFF;
+gAFF:      NOP 0;
+NETWORK
+TITLE = hA..Delete
+      JU hA0X;
+hA0X:      NOP 0;
+      L #Network_16;
+      T #P_RET_VAL.MEM;
+      AN #Request.Delete.Request;
+      R #Response.Delete.Completed;
+      NOT;
+      FP #FP_REQUEST.DeleteDB;
+      JC hA0Y;
+      JU hBFF;
+hA0Y:      NOP 0;
+      L #P_RET_VAL.MEM;
+      T #P_RET_VAL.V[1];
+      T #P_RET_VAL.V[2];
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #Request.Delete.BarcodeDig , 
+         RET_VAL                     := #P_RET_VAL.V[1] , 
+         BLK                         := #DigitFilter
+      );
+      L #P_RET_VAL.V[1];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      JU jA00               ;//Goto Data input filters
+hAR2:      NOP 0                    ;//Return Data input filters
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #DigitFilter , 
+         RET_VAL                     := #P_RET_VAL.V[2] , 
+         BLK                         := #DeleteData
+      );
+      L #P_RET_VAL.V[2];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #IniData , 
+         RET_VAL                     := #P_RET_VAL.V[3] , 
+         BLK                         := #Response.DeleteData
+      );
+      L #P_RET_VAL.V[3];
+      L 0;
+      <>I;
+      S #FAULT;
+      AN #DataInputOK;
+      JC hB3G                       ;//Error data input
+      L 1;
+      T #COUNT.hA00;
+hA00:      NOP 0;
+      L #COUNT.hA00;
+      JL hAXX;
+      JU hAXX;
+      JU hA11;//db[1]
+      JU hA21;//db[2]
+      JU hA31;//db[3]
+      JU hA41;//db[4]
+      JU hA51;//db[5]
+      JU hA61;//db[6]
+      JU hB40;//end
+hAXX:      JU hAEE;//fault
+hA11:      NOP 0;
+      OPN DB[ #LIST_DB_T.DbNumber[1]];
+      LAR1 #P_ADR.I_DB[1];
+      L #NumDataArrayDB[1];
+      JU hA10;
+hA21:      NOP 0;
+      OPN DB[ #LIST_DB_T.DbNumber[2]];
+      LAR1 #P_ADR.I_DB[2];
+      L #NumDataArrayDB[2];
+      JU hA10;
+hA31:      NOP 0;
+      OPN DB[ #LIST_DB_T.DbNumber[3]];
+      LAR1 #P_ADR.I_DB[3];
+      L #NumDataArrayDB[3];
+      JU hA10;
+hA41:      NOP 0;
+      OPN DB[ #LIST_DB_T.DbNumber[4]];
+      LAR1 #P_ADR.I_DB[4];
+      L #NumDataArrayDB[4];
+      JU hA10;
+hA51:      NOP 0;
+      OPN DB[ #LIST_DB_T.DbNumber[5]];
+      LAR1 #P_ADR.I_DB[5];
+      L #NumDataArrayDB[5];
+      JU hA10;
+hA61:      NOP 0;
+      OPN DB[ #LIST_DB_T.DbNumber[6]];
+      LAR1 #P_ADR.I_DB[6];
+      L #NumDataArrayDB[6];
+      JU hA10;
+hA10:      NOP 0;
+      T #COUNT.hA01;
+      TAR1;
+      T #SAVE_AR1.hA10;
+      SET;
+//-------------------------------
+      TAR1;
+      T #P_ADR.SAVE_COMP_01;
+      T #P_ADR.COMP_01;
+      L P##DeleteData;
+      T #P_ADR.COMP_02;
+      SET;
+      R #AUX.DifferentValue;
+      L #LENGTH.Code;
+hMP0:      NOP 0;
+      T #COUNT.hA02;
+      LAR1 #P_ADR.COMP_01;
+      L DBB[ AR1, P#0.0];
+      LAR1 #P_ADR.COMP_02;
+      L DIB[ AR1, P#0.0];
+      <>I;
+      S #AUX.DifferentValue;
+      L P#1.0;
+      L #P_ADR.COMP_01;
+      +D;
+      T #P_ADR.COMP_01;
+      L P#1.0;
+      L #P_ADR.COMP_02;
+      +D;
+      T #P_ADR.COMP_02;
+      L #COUNT.hA02;
+      LOOP hMP0;
+      LAR1 #P_ADR.SAVE_COMP_01;
+//-------------------------------
+      AN #AUX.DifferentValue;
+      JC hB20;
+      L #LENGTH.PointerData;
+      +AR1;
+      L #COUNT.hA01;
+      LOOP hA10;
+      JU hWFF;
+hWFF:      NOP 0;
+      L #COUNT.hA00;
+      + 1;
+      T #COUNT.hA00;
+      L #QuantityDB;
+      >I;
+      JC hB40;
+      JU hA00;
+hAEE:      NOP 0;
+      SET;
+      S #FAULT;
+      JU END;
+      JU hAFF;
+hAFF:      NOP 0;
+      JU END;
+hB20:      NOP 0;
+      NOP 0;
+      L #COUNT.hA00;
+      JL hB3X;
+      JU hB3X;
+      JU hB31;//db[1]
+      JU hB32;//db[2]
+      JU hB33;//db[3]
+      JU hB34;//db[4]
+      JU hB35;//db[5]
+      JU hB36;//db[6]
+hB3X:      JU hB3E;//fault
+hB31:      NOP 0;
+      LAR1 P##ANY_DB1_I;
+      JU hB3F;
+hB32:      NOP 0;
+      LAR1 P##ANY_DB2_I;
+      JU hB3F;
+hB33:      NOP 0;
+      LAR1 P##ANY_DB3_I;
+      JU hB3F;
+hB34:      NOP 0;
+      LAR1 P##ANY_DB4_I;
+      JU hB3F;
+hB35:      NOP 0;
+      LAR1 P##ANY_DB5_I;
+      JU hB3F;
+hB36:      NOP 0;
+      LAR1 P##ANY_DB6_I;
+      JU hB3F;
+hB3E:      NOP 0;
+      SET;
+      S #FAULT;
+      JU END;
+      JU hB3F;
+hB3F:      NOP 0;
+      L LD[ AR1, P#0.0];
+      T #AUX.LD_01;
+      L LW[ AR1, P#4.0];
+      T #AUX.LW_01;
+      T #PAUXnDB;
+      LAR1 P##ANY_DB_DELETE;
+      L #AUX.LD_01;
+      T LD[ AR1, P#0.0];
+      L #AUX.LW_01;
+      T LW[ AR1, P#4.0];
+      L #SAVE_AR1.hA10;
+      T LD[ AR1, P#6.0];
+      L #P_RET_VAL.MEM;
+      T #P_RET_VAL.V[1];
+      T #P_RET_VAL.V[2];
+      T #P_RET_VAL.V[3];
+      T #P_RET_VAL.V[4];
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #ANY_DB_DELETE , 
+         RET_VAL                     := #P_RET_VAL.V[1] , 
+         BLK                         := #Response.DeleteData
+      );
+      L #P_RET_VAL.V[1];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #IniData , 
+         RET_VAL                     := #P_RET_VAL.V[2] , 
+         BLK                         := #ANY_DB_DELETE
+      );
+      L #P_RET_VAL.V[2];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      S #Response.Delete.Completed;
+      L #LogDelete;
+      T #Log.Request;
+hB3G:      NOP 0;
+      A #DataInputOK;
+      JC hB3I               ;//Error data input
+      L #LogDataInputNOK;
+      T #Log.Request;
+hB3I:      NOP 0;
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #DeleteData , 
+         RET_VAL                     := #P_RET_VAL.V[3] , 
+         BLK                         := #Log.DatabaseTable
+      );
+      L #P_RET_VAL.V[3];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #DateTime , 
+         RET_VAL                     := #P_RET_VAL.V[4] , 
+         BLK                         := #Log.DatabaseTable.DateTime
+      );
+      L #P_RET_VAL.V[4];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      JU hB50;
+hB40:      NOP 0;
+      SET;
+      R #Response.Delete.Completed;
+hB50:      NOP 0;
+      L #P_RET_VAL.MEM;
+      T #P_RET_VAL.V[1];
+      CALL FILL
+      {ptr_type := 'Variant'}
+      (  BVAL                        := #DeleteData , 
+         RET_VAL                     := #P_RET_VAL.V[1] , 
+         BLK                         := #Response.Delete.BarcodeDig
+      );
+      L #P_RET_VAL.V[1];
+      L 0;
+      <>I;
+      S #FAULT;
+      JC END;
+      JU hBFF;
+hBFF:      NOP 0;
+NETWORK
+TITLE = jA..Data input filters
+      JU jA0X;
+jA0X:      NOP 0;
+      JC jAFF;
+      JU jA00;
+jA00:      NOP 0;
+      L #P_RET_VAL.MEM;
+      T #NetworkReturn;
+      L #Network_17;
+      T #P_RET_VAL.MEM;
+      R #DataInputOK;
+      CALL "#DATA_INPUT_FILTER_EAN13"
+      (  Data                        := #DigitFilter.Code.Digit , 
+         OK                          := #DataInputOK
+      );
+      L #NetworkReturn;
+      L #Network_14;
+      ==I;
+      JC fAR2               ;//Query
+      L #NetworkReturn;
+      L #Network_15;
+      ==I;
+      JC gAR2               ;//Insert
+      L #NetworkReturn;
+      L #Network_16;
+      ==I;
+      JC hAR2               ;//Delete
+      JU jAFF;
+jAFF:      NOP 0;
+
+NETWORK
+TITLE = --End--
+      JU END;
+END:      NOP 0;
+      A #FAULT;
+      = #FbFault;
+      A #DATA_ERROR;
+      = #DataError;
+      L #P_RET_VAL.MEM;
+      T #RetVal;
+      LAR1 #SaveAR1;
+      L #SaveSTW;
+      T STW;
+      SET;
+      SAVE;
+      BE;
+END_FUNCTION_BLOCK
+

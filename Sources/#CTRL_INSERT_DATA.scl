@@ -1,0 +1,147 @@
+﻿FUNCTION_BLOCK "#CTRL_INSERT_DATA"
+TITLE = Ctrl insert data
+{ S7_Optimized_Access := 'TRUE' }
+AUTHOR : QLR
+FAMILY : dnomaiD
+VERSION : 9.0
+   VAR_INPUT 
+      InsertBarcode : Array[1..2] of Bool;   // Insert
+      InsertPerm : Bool;   // Insert permission
+      ResponseInsertCompleted : Bool;   // Response insert completed
+      Reset : Bool;   // Reset
+   END_VAR
+
+   VAR_OUTPUT 
+      Insert : Bool;   // Insert
+   END_VAR
+
+   VAR_IN_OUT 
+      DataBarcodeCode : Array[1..2] of "UDT_BARCODE_CODE";   // Insert
+      DataCode : "UDT_BARCODE_CODE";   // Current data
+      DataBarcodeScanner : Array[1..2] of "UDT_BARCODE_SCANNER";   // Insert
+      DataScanner : "UDT_BARCODE_SCANNER";   // Current data
+      Status : Array[1..2] of Int;
+   END_VAR
+
+   VAR 
+      "Counter" : Int;
+      InProgress : Bool;
+      A_TimerIni : Array[1..2] of Bool;
+      Q_TimerIni : Array[1..2] of Bool;
+      A_TimerOutCase : Array[1..2] of Bool;
+      Q_TimerOutCase : Array[1..2] of Bool;
+      TimerIni1 {OriginalPartName := 'IEC_TIMER'; LibVersion := '1.0'} : TON_TIME;
+      TimerIni2 {OriginalPartName := 'IEC_TIMER'; LibVersion := '1.0'} : TON_TIME;
+      TimerOutCase1 {OriginalPartName := 'IEC_TIMER'; LibVersion := '1.0'} : TON_TIME;
+      TimerOutCase2 {OriginalPartName := 'IEC_TIMER'; LibVersion := '1.0'} : TON_TIME;
+      TimerIni : Bool;
+   END_VAR
+
+   VAR_TEMP 
+      Ret : Word;
+   END_VAR
+
+   VAR CONSTANT 
+      ArrayIni : Int := 1;
+      ArrayEnd : Int := 2;
+   END_VAR
+
+
+BEGIN
+	// Timers
+	#TimerIni1(IN := #A_TimerIni[1],
+	            PT := t#1s);
+	#Q_TimerIni[1] := #TimerIni1.Q;
+	#TimerOutCase1(IN := #A_TimerOutCase[1],
+	           PT := t#35s);
+	#Q_TimerOutCase[1] := #TimerOutCase1.Q;
+	
+	#TimerIni2(IN := #A_TimerIni[2],
+	           PT := t#1s);
+	#Q_TimerIni[2] := #TimerIni2.Q;
+	#TimerOutCase2(IN := #A_TimerOutCase[2],
+	               PT := t#35s);
+	#Q_TimerOutCase[2] := #TimerOutCase2.Q;
+	#TimerIni := FALSE;
+	FOR #Counter := #ArrayIni TO #ArrayEnd DO
+	    IF #A_TimerIni[#Counter] THEN
+	        #TimerIni := TRUE;
+	    END_IF;
+	END_FOR;
+	
+	FOR #Counter := #ArrayIni TO #ArrayEnd DO
+	    
+	    IF #Q_TimerOutCase[#Counter] THEN
+	        #Status[#Counter] := 99;
+	    END_IF;
+	    
+	    CASE #Status[#Counter] OF
+	        1:  //Ini..
+	            IF NOT #InsertBarcode[#Counter] AND NOT #ResponseInsertCompleted AND #Q_TimerIni[#Counter] AND NOT #Reset THEN
+	                #Status[#Counter] := 1 + #Status[#Counter];
+	            END_IF;
+	            GOTO END;
+	        2:  //Waiting for permission to insert data
+	            IF #InsertPerm THEN
+	                #Status[#Counter] := 1 + #Status[#Counter];
+	            END_IF;
+	            GOTO END;
+	        3:  //Ready
+	            IF #InsertBarcode[#Counter]  THEN
+	               #Status[#Counter] := 1 + #Status[#Counter];
+	            END_IF;
+	            GOTO END;
+	        4:  //Start
+	            IF NOT #ResponseInsertCompleted AND NOT #InProgress THEN
+	                UMOVE_BLK(IN := #DataBarcodeCode[#Counter].Digit[1],
+	                          COUNT := 13,
+	                          OUT => #DataCode.Digit[1]);
+	                #DataScanner.Number := #DataBarcodeScanner[#Counter].Number;
+	                #InProgress := TRUE;
+	                #Status[#Counter] := 1 + #Status[#Counter];
+	            END_IF;
+	            GOTO END;
+	        5:  // data copied!  
+	            IF NOT #ResponseInsertCompleted THEN
+	                #Insert := TRUE;
+	                #Status[#Counter] := 1 + #Status[#Counter];
+	            END_IF;
+	            GOTO END;
+	        6:  //in progress...
+	            IF #ResponseInsertCompleted THEN
+	                #Insert := FALSE;
+	                #InProgress := FALSE;
+	                #Status[#Counter] := 0;
+	            END_IF;
+	            GOTO END;
+	        99: // time out
+	            IF #Reset THEN
+	                #Insert := FALSE;
+	                #InProgress := FALSE;
+	                #Status[#Counter] := 0;
+	            END_IF;
+	        ELSE  
+	            #Status[#Counter] := 1;
+	            #Insert := FALSE;
+	            GOTO END;
+	    END_CASE;
+	    END: ;
+	    
+	    IF #Status[#Counter] = 1 THEN
+	        IF NOT #InProgress AND NOT #TimerIni THEN
+	            #A_TimerIni[#Counter] := TRUE;
+	        END_IF;
+	    ELSE
+	        #A_TimerIni[#Counter] := FALSE;
+	    END_IF;
+	    IF #InProgress THEN
+	        #A_TimerOutCase[#Counter] := TRUE;
+	    ELSE
+	        #A_TimerOutCase[#Counter] := FALSE;
+	    END_IF;
+	   
+	END_FOR;
+	
+	
+END_FUNCTION_BLOCK
+

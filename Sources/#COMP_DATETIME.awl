@@ -1,0 +1,160 @@
+﻿FUNCTION "#COMP_DATETIME" : Bool
+TITLE = Compare DT1>DT2
+{ S7_Optimized_Access := 'FALSE' }
+AUTHOR : QLR
+FAMILY : dnomaiD
+VERSION : 9.0
+   VAR_INPUT 
+      DT1 : Date_And_Time;   // Date and Time 1
+      DT2 : Date_And_Time;   // Date and Time 2
+   END_VAR
+
+   VAR_TEMP 
+      DB1 : Word;
+      DB2 : Word;
+      SaveSTW : DWord;
+      AuxYearDt : Byte;
+      YearDt1 : Byte;
+      YearDt2 : Byte;
+      Loop1 : Int;
+      Loop2 : Byte;
+   END_VAR
+
+
+BEGIN
+NETWORK
+TITLE = Start
+      L STW;
+      T #SaveSTW;
+      L 0;
+      T #DB1;
+      T #DB2;
+      T #AuxYearDt;
+      T #YearDt1;
+      T #YearDt2;
+      T #Loop1;
+      T #Loop2;
+
+NETWORK
+TITLE = Pointer
+      L P##DT1;
+      LAR1;
+      L P##DT2;
+      LAR2;
+      L W[ AR1, P#0.0];
+      T #DB1;
+      OPN DB[ #DB1];
+      L D[ AR1, P#2.0];
+      LAR1;
+      L W[ AR2, P#0.0];
+      T #DB2;
+      OPN DI[ #DB2];
+      L D[ AR2, P#2.0];
+      OD 16#0100_0000;
+      LAR2;
+      SET;
+      SAVE;
+NETWORK
+TITLE = Check if it is a BCD number
+      JU DT00;
+      L 1;
+      T #Loop1;
+DT00:      NOP 0;
+      L #Loop1;
+      JL DTXX;
+      JU DT01;//Data time 1
+      JU DT02;//Data time 2
+DTXX:      JU DTFF;//End
+DT01:      NOP 0;
+      L B[ AR1, P#0.0];
+      T #YearDt1;
+      T #AuxYearDt;
+      JU DTXF;
+DT02:      NOP 0;
+      L B[ AR2, P#0.0];
+      T #YearDt2;
+      T #AuxYearDt;
+      JU DTXF;
+DTXF:      NOP 0;
+      AW 16#6666;
+      PUSH;
+      JZ DTOK;
+      SLW 1;
+      L #AuxYearDt;
+      AW;
+      AW 16#8888;
+      JN ERR;
+      TAK;
+      AW 16#4444;
+      SLW 1;
+      L #AuxYearDt;
+      AW;
+      JN ERR;
+DTOK:      NOP 0;
+      L #Loop1;
+      + 1;
+      T #Loop1;
+      JU DT00;
+      JU DTFF;
+DTFF:      NOP 0;
+NETWORK
+TITLE = Year
+      JU YEAR;
+YEAR:      NOP 0;
+      L 89;
+      L #YearDt1;//(1990-1999)
+      BTI;
+      <I;
+      JC YE1;
+      + 100;//(2000-2089)
+YE1:      NOP 0;
+      T #YearDt1;
+      L 89;
+      L #YearDt2;//(1990-1999)
+      BTI;
+      <I;
+      JC YE2;
+      + 100;//(2000-2089)
+YE2:      NOP 0;
+      T #YearDt2;
+      L #YearDt1;
+      <I;
+      JC SET;
+      >I;
+      JC RESE;
+NETWORK
+TITLE = Compare
+      L 7;
+COMP:      NOP 0;
+      T #Loop2;
+      L B[ AR1, P#1.0];
+      L B[ AR2, P#1.0];
+      <I;
+      JC RESE;
+      >I;
+      JC SET;
+      +AR1 P#1.0;
+      +AR2 P#1.0;
+      L #Loop2;
+      LOOP COMP;
+RESE:      NOP 0;
+      R #"#COMP_DATETIME";
+      JU END;
+SET:      NOP 0;
+      S #"#COMP_DATETIME";
+      JU END;
+NETWORK
+TITLE = Error
+      JU ERR;
+ERR:      NOP 0;
+      CLR;
+      SAVE;
+NETWORK
+TITLE = End
+      JU END;
+END:      NOP 0;
+      L #SaveSTW;
+      T STW;
+      BE;
+END_FUNCTION
+

@@ -1,0 +1,143 @@
+﻿FUNCTION_BLOCK "#LOGGER"
+TITLE = LOGGER
+{ S7_Optimized_Access := 'FALSE' }
+AUTHOR : QLR
+FAMILY : dnomaiD
+VERSION : 9.0
+//
+//
+   VAR_INPUT 
+      LAST_LOG : "UDT_LOG";
+      FIRST_POS_LOG_LIST : Any;
+      RESET : Bool;
+   END_VAR
+
+   VAR_OUTPUT 
+      FB_FAULT : Bool;
+      FB_RET_VAL : Int;
+      TIMEOUT_SCRIPT : Bool;
+   END_VAR
+
+   VAR_IN_OUT 
+      LOG_LIST : Array[1..10] of "UDT_LOG";
+      NEW : Bool;
+   END_VAR
+
+   VAR 
+      DATE_LAST_LOG : Date_And_Time;
+      INI_LOG : "UDT_LOG";
+      NewLog : Bool;
+      pSourceAnyLSB : Word;
+      pushLength : Int;
+      NArray01 { S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : Int;
+      NewData { S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : Bool;
+      RetVal01 { S7_HMI_Accessible := 'False'; S7_HMI_Visible := 'False'} : Int;
+      nSec : Int;
+      TimerHmiScript {OriginalPartName := 'IEC_TIMER'; LibVersion := '1.0'} : TON_TIME;
+   END_VAR
+
+   VAR_TEMP 
+      pSourceDB : Any;
+      pSourceAny AT pSourceDB : Struct
+         CODE : Byte;
+         TYP : Byte;
+         LENG : Int;
+         DBN : Int;
+         MA : Byte;
+         MSB : Byte;
+         LSB : Word;
+      END_STRUCT;
+      pDestinationDB : Any;
+      pDestinationAny AT pDestinationDB : Struct
+         CODE : Byte;
+         TYP : Byte;
+         LENG : Int;
+         DBN : Int;
+         MA : Byte;
+         MSB : Byte;
+         LSB : Word;
+      END_STRUCT;
+   END_VAR
+
+   VAR CONSTANT 
+      ALWAYS_ON : Bool := TRUE;
+      ALWAYS_OFF : Bool;
+      LOG_LIST_MAX : Int := 10;
+      LOG_LIST_MIN : Int := 1;
+   END_VAR
+
+
+BEGIN
+	// Timer
+	#TimerHmiScript(IN := #NEW,
+	           PT := t#1s);
+	#TIMEOUT_SCRIPT := #TimerHmiScript.Q;
+	//----> Start
+	#pSourceDB:=#FIRST_POS_LOG_LIST;
+	#pushLength:=#pSourceAny.LENG;  
+	#pSourceAnyLSB:=INT_TO_WORD (#pushLength*8);
+	#pushLength:=(#LOG_LIST_MAX-1)*#pushLength;
+	#pSourceAny.LENG:=#pushLength;
+	#pSourceAny.LSB:=#pSourceAnyLSB;
+	#pDestinationDB:=#FIRST_POS_LOG_LIST;   
+	#pDestinationAny.LENG:=#pushLength;
+	
+	IF #RESET THEN
+	    #FB_FAULT := FALSE;
+	    IF #TimerHmiScript.Q THEN
+	        #NEW := FALSE;
+	    END_IF;
+	END_IF;
+	
+	#FB_RET_VAL:=0;
+	#NewLog:=FALSE;
+	#NewData:="#COMP_DATETIME"(DT1:=#LAST_LOG.DatabaseTable.DateTime , DT2:=#DATE_LAST_LOG); //#COMP_DATETIME GT_DT
+	
+	IF #NewData THEN
+	    FOR #NArray01:=#LOG_LIST_MAX TO #LOG_LIST_MIN BY -1 DO
+	        IF(#NArray01=#LOG_LIST_MIN AND #LOG_LIST[#NArray01].Request=0)THEN //First position empty
+	            #NewLog:= TRUE;        
+	        ELSIF(#NArray01<>#LOG_LIST_MIN AND #LOG_LIST[#NArray01].Request=0)THEN //Next
+	            IF(#LOG_LIST[#NArray01-1].Request=0)THEN
+	                CONTINUE;
+	            END_IF;    
+	            #NewLog:=TRUE;                                          
+	        END_IF;       
+	        IF(#NewLog)THEN
+	            #nSec:=1;
+	            L_00: ;
+	                CASE #nSec OF
+	                1://---->Copy the log                    
+	                    #RetVal01:=FILL(BVAL:=#LAST_LOG, BLK=>#LOG_LIST[#NArray01]);
+	                    GOTO L_IN;
+	                2://---->The last date is saved           
+	                    #RetVal01:=FILL(BVAL:=#LOG_LIST[#NArray01].DatabaseTable.DateTime, BLK=>#DATE_LAST_LOG); 
+	                    GOTO L_IN;
+	                3://---->Pushes the data one position            
+	                    IF(#NArray01=#LOG_LIST_MAX)THEN
+	                        #RetVal01:=FILL(BVAL:=#pSourceDB, BLK=>#pDestinationDB);                
+	                    END_IF; 
+	                    GOTO L_IN;
+	                4://---->Delete last position            
+	                    IF(#NArray01=#LOG_LIST_MAX)THEN
+	                        #RetVal01:=FILL(BVAL:=#INI_LOG, BLK=>#LOG_LIST[#LOG_LIST_MAX]);                
+	                    END_IF; 
+	                    GOTO L_IN;                                                       
+	                ELSE://---->End    
+	                    GOTO L_EN;
+	                END_CASE;
+	            L_IN://Next
+	                IF(#RetVal01<>0)THEN #FB_FAULT:=TRUE; #FB_RET_VAL:=#nSec; GOTO L_EN; END_IF; 
+	                #nSec:=#nSec+1; 
+	                GOTO L_00;
+	            L_EN: ;
+	            EXIT;
+	        END_IF;                          
+	    END_FOR;
+	END_IF;
+	IF #NewData THEN
+	    #NEW := TRUE;
+	END_IF;
+	
+END_FUNCTION_BLOCK
+

@@ -1,0 +1,147 @@
+﻿TYPE "UDT_DATABASE_TABLE"
+AUTHOR : QLR
+FAMILY : DATABASE
+VERSION : 0.1
+   STRUCT
+      BarcodeData : "UDT_BARCODE";   // ::Barcode data
+      DateTime : Date_And_Time;   // ::Date and time
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "UDT_DATABASE_M_REQUEST"
+AUTHOR : QLR
+FAMILY : DATABASE
+VERSION : 0.1
+   STRUCT
+      Insert : Struct   // ::Insert data DB
+         Request : Bool;   // Insert request
+         BarcodeData : "UDT_BARCODE";   // ::Barcode data
+      END_STRUCT;
+      Query : Struct   // ::Query data DB
+         Request : Bool;   // Query request
+         BarcodeDig : "UDT_BARCODE_CODE";   // ::Barcode digit
+      END_STRUCT;
+      Delete : Struct   // ::Delete data DB
+         Request : Bool;   // Delete request
+         BarcodeDig : "UDT_BARCODE_CODE";   // ::Barcode digit
+      END_STRUCT;
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "UDT_DATABASE_M_RESPONSE"
+AUTHOR : QLR
+FAMILY : DATABASE
+VERSION : 0.1
+   STRUCT
+      Insert : Struct   // ::Insert data DB
+         Completed : Bool;   // Insert completed
+      END_STRUCT;
+      InsertData : "UDT_DATABASE_TABLE";   // ::Insert data DB
+      Query : Struct   // ::Query data DB
+         DataAvailable : Bool;   // Data available
+         DataNotAvailable : Bool;   // Data not available
+         BarcodeDig : "UDT_BARCODE_CODE";   // ::Barcode digit
+      END_STRUCT;
+      QueryDataAvailable : "UDT_DATABASE_TABLE";   // ::Available query data
+      Delete : Struct   // ::Query data DB
+         Completed : Bool;   // Delete completed
+         BarcodeDig : "UDT_BARCODE_CODE";   // ::Barcode digit
+      END_STRUCT;
+      DeleteData : "UDT_DATABASE_TABLE";   // ::Delete data DB
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "UDT_DATABASE_M_STATUS"
+AUTHOR : QLR
+FAMILY : DATABASE
+VERSION : 0.1
+   STRUCT
+      Perm : Struct   // ::Permission
+         Insert_nDB : Array[1..6] of Bool;   // Insert data permission
+         Out_nDB : Array[1..6] of Bool;   // Out data permission
+         Push_nDB : Array[1..6] of Bool;   // Push data permission
+         Insert : Bool;   // Insert permission
+      END_STRUCT;
+      Mem : Struct   // ::Memory
+         Enabled : Bool := TRUE;   // Enabled
+         Full_nDB : Array[1..6] of Bool;   // Full DB
+         FillAll : Bool;   // Fill all DBs
+         SelctBBDDNum : Int;   // Selected BBDD number
+      END_STRUCT;
+      Fb_Fault : Bool;   // Fault fb
+      DataError : Bool;
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "UDT_DATABASE_DB_LIST"
+VERSION : 0.1
+   STRUCT
+      DbNumber : Array[1..6] of Int;   // DB number
+      QuantityDB : Int;
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "UDT_DATABASE_DB_LIST_CONFIG"
+VERSION : 0.1
+   STRUCT
+      DbNumber : Array[1..5] of Int;   // DB number
+      QuantityDB : Int;
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "UDT_DATABASE_CTRL"
+AUTHOR : QLR
+FAMILY : DATABASE
+VERSION : 0.1
+   STRUCT
+      FUNTION : Struct   // ::Function
+         Manual : Struct   // ::Manual mode
+            Insert : Bool;   // Insert
+            Query : Bool;   // Query
+            Delete : Bool;   // Delete
+         END_STRUCT;
+         Auto : Struct   // ::Automatic mode
+            Insert : Bool;   // Insert
+            Query : Bool;   // Query
+            Delete : Bool;   // Delete
+         END_STRUCT;
+      END_STRUCT;
+      REQUEST : Struct   // ::Request
+         Auto : Struct   // ::Automatic mode
+            Insert : Bool;   // Insert
+            Query : Bool;   // Query
+            Delete : Bool;   // Delete
+            Data : "UDT_BARCODE";   // Current data
+            InsertBarcode : Array[1..2] of Bool;   // Insert Barcode
+            QueryBarcode : Array[1..2] of Bool;   // Query Barcode
+            DeleteBarcode : Array[1..2] of Bool;   // Delete Barcode
+            DataBarcodeCode : Array[1..2] of "UDT_BARCODE_CODE";   // Data Barcode Code
+            DataBarcodeScanner : Array[1..2] of "UDT_BARCODE_SCANNER";   // Data Barcode Scanner
+            Status : Array[1..2] of Int;   // Status
+         END_STRUCT;
+      END_STRUCT;
+      RES01 : DInt;   // Reserve
+   END_STRUCT;
+
+END_TYPE
+
+TYPE "UDT_DATABASE_M"
+AUTHOR : QLR
+FAMILY : DATABASE
+VERSION : 0.1
+   STRUCT
+      RESPONSE : "UDT_DATABASE_M_RESPONSE";   // ::Response BBDD
+      RES01 : DInt;   // Reserve
+      REQUEST : "UDT_DATABASE_M_REQUEST";   // ::Request BBDD
+      RES02 : DInt;   // Reserve
+      STATUS : "UDT_DATABASE_M_STATUS";   // ::Status BBDD
+   END_STRUCT;
+
+END_TYPE
+

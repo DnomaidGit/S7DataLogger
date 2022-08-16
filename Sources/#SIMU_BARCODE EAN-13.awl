@@ -1,0 +1,159 @@
+﻿FUNCTION_BLOCK "#SIMU_BARCODE EAN-13"
+TITLE = Simu Barcode
+{ S7_Optimized_Access := 'FALSE' }
+AUTHOR : QLR
+FAMILY : dnomaiD
+VERSION : 9.0
+   VAR_INPUT 
+      NextNumber : Bool;   // Next number
+      ScannerNumber : Int;   // Scanner number
+      MaxNumber : Int;   // Maximum number
+   END_VAR
+
+   VAR_OUTPUT 
+      RequestInsert : Bool;   // Request Insert
+      ScannerNumberAuto : Int;   // Scanner number auto
+   END_VAR
+
+   VAR_IN_OUT 
+      CODE : "UDT_BARCODE_CODE";   // UDT_BARCODE_CODE
+   END_VAR
+
+   VAR 
+      CodeNum : Int;
+      FpNext : Bool;
+   END_VAR
+
+   VAR_TEMP 
+      SaveAR1 : DWord;
+      SaveSTW : DWord;
+      BcdSDL4 : DWord;
+      ValNeg : Bool;
+      NumDB : Word;
+      QuaChar : Byte;
+      xRET_VAL : Int;
+   END_VAR
+
+   VAR CONSTANT 
+      LengthChar : USInt := 13;
+   END_VAR
+
+
+BEGIN
+NETWORK
+TITLE = Start
+      TAR1 #SaveAR1;
+      L STW;
+      T #SaveSTW;
+      CLR;
+      = #ValNeg;
+      = #RequestInsert;
+      L 0;
+      T #QuaChar;
+      T #BcdSDL4;
+      T #NumDB;
+
+      L #CodeNum;
+      L #MaxNumber;
+      >=I;
+      JC aA01;
+      JU aAFF;
+aA01:      NOP 0;
+      L 0;
+      T #CodeNum;
+      JU aAFF;
+aAFF:      NOP 0;
+NETWORK
+TITLE = Next
+      A #NextNumber;
+      FP #FpNext;
+      JC cA01;
+      JU END;
+cA01:      NOP 0;
+      CALL FILL_BLK
+      {value_type := 'Char', count_type := 'USInt'}
+      (  IN                          := '0' , 
+         COUNT                       := #LengthChar , 
+         OUT                         := #CODE.Digit[1]
+      );
+      L #CodeNum;
+      + 1;
+      T #CodeNum;
+      SET;
+      S #RequestInsert;
+NETWORK
+TITLE = Convert int to char
+      L P##CODE;
+      LAR1;
+      L W[ AR1, P#0.0];
+      T #NumDB;
+      OPN DB[ #NumDB];
+      L D[ AR1, P#2.0];
+      LAR1;
+      L #CodeNum;
+      L 0;
+      +I;
+      JP BC01;
+      JZ BC02;
+      SET;
+      = #ValNeg;
+      L 1;
+      T #CodeNum;
+      JU END;
+BC01:      NOP 0;// <0
+      ITD;
+      DTR;
+      ABS;
+      LN;
+      L 2.302585;
+      /R;
+      TRUNC;
+BC02:      NOP 0;// ==0
+      + 1;
+      T #QuaChar;
+      + 1;
+      L #LengthChar;
+      >I;
+      JC END;
+      TAK;
+      L #CodeNum;
+      ITD;
+      DTB;
+      T #BcdSDL4;
+      L #BcdSDL4;
+      SLD 4;
+      T #BcdSDL4;
+      L #LengthChar;
+      L -1;
+      +I;
+      L 8;
+      *I;
+      +AR1;
+      L #QuaChar;
+BC03:      NOP 0;// Loop
+      T #QuaChar;
+      L #BcdSDL4;
+      SRD 4;
+      T #BcdSDL4;
+      AD 16#0000_000F;
+      L B#16#30;
+      OW;
+      T B[ AR1, P#0.0];
+      L DINT#-8;
+      +AR1;
+      L #QuaChar;
+      LOOP BC03;
+      L #ScannerNumber;
+      T #ScannerNumberAuto;
+NETWORK
+TITLE = End
+      JU END;
+END:      NOP 0;
+      LAR1 #SaveAR1;
+      L #SaveSTW;
+      T STW;
+      SET;
+      SAVE;
+      BE;
+END_FUNCTION_BLOCK
+
