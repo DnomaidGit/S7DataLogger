@@ -16,7 +16,6 @@ The project consists of recording barcode readings. The Plc stores the data usin
 4.	Create backup of the .log file
 In order to perform the logging tests without the need of a barcode reader, I have created a function that simulates the reading of barcodes.
 
-Translated with www.DeepL.com/Translator (free version)
 ***
 ## Development Environment
 * TIA PORTAL V13
