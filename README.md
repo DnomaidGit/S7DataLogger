@@ -19,13 +19,13 @@ In order to perform the logging tests without the need of a barcode reader, I ha
 ### Screenshot
 ***
 <div align="center">
-    <img src="/Images/ImageHM1.png" width="200px"</img>
+    <img src="/Images/ImageHM1.png"</img>
 </div>  
 <div align="center">
-    <img src="/Images/ImageHM2.png" width="200px"</img>
+    <img src="/Images/ImageHM2.png"</img>
 </div>    
 <div align="center">
-    <img src="/Images/ImageHM3.png" width="200px"</img>
+    <img src="/Images/ImageHM3.png"</img>
 </div>    
 
 ***
