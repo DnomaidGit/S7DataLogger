@@ -16,7 +16,7 @@ The project consists of recording barcode readings. The Plc stores the data usin
 4.	Create backup of the .log file
 In order to perform the logging tests without the need of a barcode reader, I have created a function that simulates the reading of barcodes.
 
-### Screenshot
+### Images HMI
 ***
 <div align="center">
     <img src="/Images/ImageHMI1.png"</img>
