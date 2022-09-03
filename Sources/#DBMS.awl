@@ -3,7 +3,7 @@ TITLE = DBMS
 { S7_Optimized_Access := 'FALSE' }
 AUTHOR : QLR
 FAMILY : dnomaiD
-VERSION : 9.0
+VERSION : 10.0
 //TABLE: BarcodeData.Code | BarcodeData.Scanner | DateTime
 //PRIMARY KEY: BarcodeData.Code
    VAR_INPUT 
@@ -25,6 +25,7 @@ VERSION : 9.0
       Status : "UDT_DATABASE_M_STATUS";
       LIST_DB : "UDT_DATABASE_DB_LIST_CONFIG";
       TIME_FillAll {OriginalPartName := 'IEC_TIMER'; LibVersion := '1.0'} : IEC_TIMER;
+      TIME_StatusPermInsert_nDB {OriginalPartName := 'IEC_TIMER'; LibVersion := '1.0'} : IEC_TIMER;
    END_VAR
 
    VAR 
@@ -53,6 +54,7 @@ VERSION : 9.0
          LD_02 : DInt;
          LW_01 : DInt;
          StatusPermInsert_nDB : Bool;
+         TON_StatusPermInsert_nDB : Bool;
       END_STRUCT;
       COUNT : Struct
          cA00 : Int;
@@ -215,6 +217,16 @@ TITLE = --Timer--
 
       A #TIME_FillAll.Q;
       = #Status.Mem.FillAll;
+
+      CALL TON, #TIME_StatusPermInsert_nDB
+      {time_type := 'Time'}
+      (  IN                          := #AUX.StatusPermInsert_nDB , 
+         PT                          := t#250ms
+      );
+
+      A #TIME_StatusPermInsert_nDB.Q;
+      = #AUX.TON_StatusPermInsert_nDB;
+
 NETWORK
 TITLE = --Setting--
       L #Network_3;
@@ -2046,7 +2058,7 @@ gA00:      NOP 0;
       L #Network_15;
       T #P_RET_VAL.MEM;
       SET;
-      R #AUX.StatusPermInsert_nDB;
+//      R     #AUX.StatusPermInsert_nDB
       AN #Request.Insert.Request;
       R #Response.Insert.Completed;
       L #QuantityDB;
@@ -2087,12 +2099,15 @@ gAEE:      NOP 0;
       JU END;
 gA01:      NOP 0;
       = #AUX.StatusPermInsert_nDB;
+      A #AUX.TON_StatusPermInsert_nDB;
+      AN #Status.Mem.FillAll;
+      AN #Status.Fb_Fault;
       = #Status.Perm.Insert;
       A #FULL              ;//Data base full
       JC gA02;
       A #Request.Query.Request;
       JC gAFF;
-      A #AUX.StatusPermInsert_nDB;
+      A #AUX.TON_StatusPermInsert_nDB;
 gA02:      NOP 0;
       A #Request.Insert.Request;
       FP #FP_REQUEST.InsertDB;
