@@ -103,6 +103,8 @@ VERSION : 0.1
       FUNTION : Struct   // ::Function
          Manual : Struct   // ::Manual mode
             Insert : Bool;   // Insert
+            P_Insert : Bool;   // Positive signal edge Insert
+            P_Insert_M : Bool;   // Positive signal edge Insert
             Query : Bool;   // Query
             Delete : Bool;   // Delete
          END_STRUCT;
