@@ -9,13 +9,12 @@
 5. [Tutorial](#tutorial)
 ***
 ## General Info
-The project consists of recording barcode readings. The Plc stores the data using the DB memory area, with the drawback that 1 DB and the memory capacity (work/load) of a Plc is limited. We will push the data logging memory to the limit using 5 DB, although it can be configured from 1 to 5 DB. The HMI creates a .log file on the PC. The user will be able to see from the HMI how all the records are being stored, the storage status, as well as being able to:
+* The project consists of recording barcode readings. The Plc stores the data using the DB memory area, with the drawback that 1 DB and the memory capacity (work/load) of a Plc is limited. We will push the data logging memory to the limit using 5 DB, although it can be configured from 1 to 5 DB. The HMI creates a .log file on the PC. The user will be able to see from the HMI how all the records are being stored, the storage status, as well as being able to:
 1.  Insert new Barcode records in the DBs. 
-2.	Consult the records
-3.	Delete records
-4.	Create backup of the .log file
-***
-In order to perform the logging tests without the need of a barcode reader, I have created a function that simulates the reading of barcodes.
+2.	Consult the records.
+3.	Delete records.
+4.	Create backup of the .log file.
+* In order to perform the logging tests without the need of a barcode reader, I have created a function that simulates the reading of barcodes.
 
 ### Images HMI
 ***
