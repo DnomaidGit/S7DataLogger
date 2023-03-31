@@ -52,6 +52,7 @@
 Watch the video on youtube.
 
 [![Watch the video](https://img.youtube.com/vi/dFuf3VNdXzA/0.jpg)](https://www.youtube.com/watch?v=dFuf3VNdXzA)
+* https://www.youtube.com/watch?v=dFuf3VNdXzA
 ***
 
 
